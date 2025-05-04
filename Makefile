@@ -22,7 +22,7 @@ $(APP_DIR)/$(TARGET): $(OBJECTS)
 
 .PHONY: all build clean debug release run
 
-build:
+build: 
 	@mkdir -p $(APP_DIR)
 	@mkdir -p $(OBJ_DIR)
 
