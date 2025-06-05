@@ -1,6 +1,5 @@
-#include <iostream>
+#include "preProcessamento.hpp"
 
-int main()
-{
-    return 0;
+int main() {
+    return process_ratings_file();
 }
