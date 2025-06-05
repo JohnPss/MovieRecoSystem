@@ -1,40 +1,55 @@
-CXX      := g++                 
-CXXFLAGS := -Wall -Wextra -Werror
-LDFLAGS  := -lm                 
-BUILD    := ./build
-OBJ_DIR  := $(BUILD)/objects
-APP_DIR  := $(BUILD)/
-TARGET   := app
-INCLUDE  := -Iinclude/
-SRC      := $(wildcard src/*.cpp) 
+CXX = g++
+CXXFLAGS = -std=c++17 -O3 -march=native -mtune=native -flto -funroll-loops -ffast-math -DNDEBUG
+CXXFLAGS += -pthread -Wno-unused-result -fomit-frame-pointer -finline-functions
+LDFLAGS = -pthread -flto
 
-OBJECTS := $(SRC:%.cpp=$(OBJ_DIR)/%.o)
+SRCDIR = src
+BUILDDIR = build
+TARGET = $(BUILDDIR)/preProcessamento
 
-all: clean build $(APP_DIR)/$(TARGET) run
+SOURCES = $(SRCDIR)/preProcessamento.cpp $(SRCDIR)/main.cpp
+OBJECTS = $(BUILDDIR)/preProcessamento.o $(BUILDDIR)/main.o
 
-$(OBJ_DIR)/%.o: %.cpp         
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -o $@ -c $<
+.PHONY: all clean run
 
-$(APP_DIR)/$(TARGET): $(OBJECTS)
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $(LDFLAGS) -o $(APP_DIR)/$(TARGET) $(OBJECTS)
+all: $(TARGET)
 
-.PHONY: all build clean debug release run
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)
 
-build: 
-	@mkdir -p $(APP_DIR)
-	@mkdir -p $(OBJ_DIR)
+$(TARGET): $(OBJECTS) | $(BUILDDIR)
+	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
 
-debug: CXXFLAGS += -DDEBUG -g
-debug: all
-
-release: CXXFLAGS += -O3
-release: all
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp | $(BUILDDIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	-@rm -rvf $(OBJ_DIR)/*
-	-@rm -rvf $(APP_DIR)/*
+	rm -rf $(BUILDDIR)
+	rm -f datasets/input.dat
 
-run:
-	./$(BUILD)/$(TARGET)
+run: $(TARGET)
+	./$(TARGET)
+
+install-deps:
+	@echo "Verificando dependências..."
+	@which g++ > /dev/null || (echo "g++ não encontrado. Instale com: sudo apt install g++" && exit 1)
+	@echo "Dependências OK!"
+
+profile: CXXFLAGS += -pg
+profile: LDFLAGS += -pg
+profile: $(TARGET)
+
+debug: CXXFLAGS = -std=c++17 -O0 -g -Wall -Wextra -pthread -DDEBUG
+debug: LDFLAGS = -pthread
+debug: $(TARGET)
+
+info:
+	@echo "Configuração de compilação:"
+	@echo "CXX: $(CXX)"
+	@echo "CXXFLAGS: $(CXXFLAGS)"
+	@echo "LDFLAGS: $(LDFLAGS)"
+	@echo "Threads disponíveis: $(shell nproc)"
+
+benchmark: $(TARGET)
+	@echo "Executando benchmark..."
+	time ./$(TARGET)
