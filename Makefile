@@ -1,26 +1,39 @@
 # Makefile para Sistema de Recomendação MovieLens
 
+# Compilador e flags
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra -pthread
+CXXFLAGS = -std=c++17 -Wall -Wextra -pthread -I$(SRCDIR)
 OPTFLAGS = -O3 -march=native -flto -funroll-loops -ffast-math
 DEBUGFLAGS = -g -O0 -DDEBUG
+
+# Diretórios e arquivos
 TARGET = recommender
 TARGET_DEBUG = recommender_debug
-SOURCE = src/Main.cpp
 SRCDIR = src
 BINDIR = bin
+OBJDIR = obj
 
-# Detecta número de cores para compilação paralela
+# Fontes e objetos
+SOURCES = $(SRCDIR)/Main.cpp \
+          $(SRCDIR)/FastRecommendationSystem.cpp \
+          $(SRCDIR)/DataLoader.cpp \
+          $(SRCDIR)/SimilarityCalculator.cpp \
+          $(SRCDIR)/RecommendationEngine.cpp
+
+OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
+OBJECTS_DEBUG = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/debug/%.o,$(SOURCES))
+
+# Núcleos do processador
 NPROCS := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
-.PHONY: all release debug clean profile test directories
+.PHONY: all release debug clean profile test directories run memcheck benchmark install uninstall help check-data
+
+# Compilação padrão
+all: release
 
 # Cria diretórios necessários
 directories:
-	@mkdir -p $(BINDIR)
-
-# Compilação padrão (release)
-all: release
+	@mkdir -p $(BINDIR) $(OBJDIR) $(OBJDIR)/debug
 
 # Versão otimizada para produção
 release: CXXFLAGS += $(OPTFLAGS)
@@ -34,25 +47,35 @@ debug: directories $(BINDIR)/$(TARGET_DEBUG)
 profile: CXXFLAGS += $(OPTFLAGS) -pg
 profile: directories $(BINDIR)/$(TARGET)_profile
 
-# Compilação do executável principal
-$(BINDIR)/$(TARGET): $(SOURCE)
-	@echo "Compilando versão release..."
-	$(CXX) $(CXXFLAGS) -o $@ $<
+# Linkagem (release)
+$(BINDIR)/$(TARGET): $(OBJECTS)
+	@echo "Linkando versão release..."
+	$(CXX) $(CXXFLAGS) -o $@ $^
 	@echo "Compilação concluída: $@"
 
-# Compilação da versão debug
-$(BINDIR)/$(TARGET_DEBUG): $(SOURCE)
-	@echo "Compilando versão debug..."
-	$(CXX) $(CXXFLAGS) -o $@ $<
+# Linkagem (debug)
+$(BINDIR)/$(TARGET_DEBUG): $(OBJECTS_DEBUG)
+	@echo "Linkando versão debug..."
+	$(CXX) $(CXXFLAGS) -o $@ $^
 	@echo "Compilação concluída: $@"
 
-# Compilação da versão profile
-$(BINDIR)/$(TARGET)_profile: $(SOURCE)
-	@echo "Compilando versão profile..."
-	$(CXX) $(CXXFLAGS) -o $@ $<
+# Linkagem (profile)
+$(BINDIR)/$(TARGET)_profile: $(OBJECTS)
+	@echo "Linkando versão profile..."
+	$(CXX) $(CXXFLAGS) -o $@ $^
 	@echo "Compilação concluída: $@"
 
-# Executa o programa
+# Compilação de objetos (release)
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@echo "Compilando $<..."
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Compilação de objetos (debug)
+$(OBJDIR)/debug/%.o: $(SRCDIR)/%.cpp
+	@echo "Compilando (debug) $<..."
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Executa o programa (release)
 run: release
 	./$(BINDIR)/$(TARGET)
 
@@ -65,20 +88,20 @@ benchmark: release
 	@echo "Executando benchmark..."
 	time ./$(BINDIR)/$(TARGET)
 
-# Verifica se os arquivos de entrada existem
+# Verifica se arquivos de dados existem
 check-data:
-	@test -f dataset/input.dat || (echo "Erro: dataset/input.dat não encontrado" && exit 1)
+	@test -f datasets/input.dat || (echo "Erro: dataset/input.dat não encontrado" && exit 1)
 	@test -f ml-25m/movies.csv || (echo "Erro: ml-25m/movies.csv não encontrado" && exit 1)
-	@test -f datasets/explore.csv || (echo "Erro: datasets/explore.csv não encontrado" && exit 1)
+	@test -f datasets/explore.dat || (echo "Erro: datasets/explore.csv não encontrado" && exit 1)
 	@echo "Todos os arquivos de dados encontrados!"
 
-# Instalação (copia para /usr/local/bin)
+# Instalação do binário
 install: release
 	@echo "Instalando em /usr/local/bin..."
 	sudo cp $(BINDIR)/$(TARGET) /usr/local/bin/
 	@echo "Instalação concluída!"
 
-# Desinstalação
+# Remove o binário instalado
 uninstall:
 	@echo "Removendo de /usr/local/bin..."
 	sudo rm -f /usr/local/bin/$(TARGET)
@@ -86,21 +109,21 @@ uninstall:
 
 # Limpa arquivos compilados
 clean:
-	rm -rf $(BINDIR)
-	rm -f *.o
+	rm -rf $(BINDIR) $(OBJDIR)
 	rm -f gmon.out
 	@echo "Limpeza concluída!"
 
 # Ajuda
 help:
 	@echo "Comandos disponíveis:"
-	@echo "  make [release]  - Compila versão otimizada (padrão)"
-	@echo "  make debug      - Compila versão para debugging"
+	@echo "  make            - Compila versão release"
+	@echo "  make debug      - Compila versão debug"
 	@echo "  make profile    - Compila versão com profiling"
-	@echo "  make run        - Compila e executa"
-	@echo "  make memcheck   - Executa com valgrind"
-	@echo "  make benchmark  - Executa medindo tempo"
-	@echo "  make check-data - Verifica se arquivos de dados existem"
-	@echo "  make install    - Instala no sistema"
-	@echo "  make clean      - Remove arquivos compilados"
-	@echo "  make help       - Mostra esta ajuda"
+	@echo "  make run        - Executa o programa"
+	@echo "  make memcheck   - Roda valgrind para memory leaks"
+	@echo "  make benchmark  - Executa e mede tempo"
+	@echo "  make check-data - Verifica arquivos de entrada"
+	@echo "  make install    - Instala em /usr/local/bin"
+	@echo "  make uninstall  - Remove de /usr/local/bin"
+	@echo "  make clean      - Limpa arquivos compilados"
+	@echo "  make help       - Exibe esta ajuda"
