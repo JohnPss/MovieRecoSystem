@@ -1,2 +1,66 @@
-datasets/input.dat
-ml-25m/ratings.csv
+# Compiled object files
+*.o
+*.obj
+
+# Compiled binary executables
+*.exe
+*.out
+*.app
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+*.dll
+*.so
+*.dylib
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# C++ cache / temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# IDE / Editor folders and files
+.vscode/
+.idea/
+*.code-workspace
+
+# Build directories
+build/
+Build/
+bin/
+Bin/
+dist/
+Debug/
+Release/
+x64/
+x86/
+
+# Logs and databases
+*.log
+*.dat
+*.csv
+
+
+# Qt-specific
+*.pro.user
+*.moc
+moc_*
+ui_*
+qrc_*
+
+# Other
+*.DS_Store
+
