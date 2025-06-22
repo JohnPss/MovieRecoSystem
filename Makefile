@@ -1,55 +1,134 @@
+# Makefile para Sistema de Recomendação MovieLens
+
+# Compilador e flags
 CXX = g++
-CXXFLAGS = -std=c++17 -O3 -march=native -mtune=native -flto -funroll-loops -ffast-math -DNDEBUG
-CXXFLAGS += -pthread -Wno-unused-result -fomit-frame-pointer -finline-functions
-LDFLAGS = -pthread -flto
+CXXFLAGS = -std=c++17 -Wall -Wextra -pthread -I$(SRCDIR)
+OPTFLAGS = -O3 -march=native -flto -funroll-loops -ffast-math
+DEBUGFLAGS = -g -O0 -DDEBUG
 
+# Diretórios e arquivos
+TARGET = recommender
+TARGET_DEBUG = recommender_debug
 SRCDIR = src
-BUILDDIR = build
-TARGET = $(BUILDDIR)/preProcessamento
+BINDIR = bin
+OBJDIR = obj
 
-SOURCES = $(SRCDIR)/preProcessamento.cpp $(SRCDIR)/main.cpp
-OBJECTS = $(BUILDDIR)/preProcessamento.o $(BUILDDIR)/main.o
+# Fontes e objetos
+SOURCES = $(SRCDIR)/Main.cpp \
+          $(SRCDIR)/FastRecommendationSystem.cpp \
+          $(SRCDIR)/DataLoader.cpp \
+          $(SRCDIR)/SimilarityCalculator.cpp \
+          $(SRCDIR)/RecommendationEngine.cpp
 
-.PHONY: all clean run
+OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
+OBJECTS_DEBUG = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/debug/%.o,$(SOURCES))
 
-all: $(TARGET)
+# Núcleos do processador
+NPROCS := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1)
 
-$(BUILDDIR):
-	mkdir -p $(BUILDDIR)
+.PHONY: all release debug clean profile test directories run memcheck benchmark install uninstall help check-data
 
-$(TARGET): $(OBJECTS) | $(BUILDDIR)
-	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
+# Compilação padrão
+all: release
 
-$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp | $(BUILDDIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+# Cria diretórios necessários
+directories:
+	@mkdir -p $(BINDIR) $(OBJDIR) $(OBJDIR)/debug
 
-clean:
-	rm -rf $(BUILDDIR)
-	rm -f datasets/input.dat
+# Versão otimizada para produção
+release: CXXFLAGS += $(OPTFLAGS)
+release: directories $(BINDIR)/$(TARGET)
 
-run: $(TARGET)
-	./$(TARGET)
+# Versão para debugging
+debug: CXXFLAGS += $(DEBUGFLAGS)
+debug: directories $(BINDIR)/$(TARGET_DEBUG)
 
-install-deps:
-	@echo "Verificando dependências..."
-	@which g++ > /dev/null || (echo "g++ não encontrado. Instale com: sudo apt install g++" && exit 1)
-	@echo "Dependências OK!"
+# Versão com profiling
+profile: CXXFLAGS += $(OPTFLAGS) -pg
+profile: directories $(BINDIR)/$(TARGET)_profile
 
-profile: CXXFLAGS += -pg
-profile: LDFLAGS += -pg
-profile: $(TARGET)
+# Linkagem (release)
+$(BINDIR)/$(TARGET): $(OBJECTS)
+	@echo "Linkando versão release..."
+	$(CXX) $(CXXFLAGS) -o $@ $^
+	@echo "Compilação concluída: $@"
 
-debug: CXXFLAGS = -std=c++17 -O0 -g -Wall -Wextra -pthread -DDEBUG
-debug: LDFLAGS = -pthread
-debug: $(TARGET)
+# Linkagem (debug)
+$(BINDIR)/$(TARGET_DEBUG): $(OBJECTS_DEBUG)
+	@echo "Linkando versão debug..."
+	$(CXX) $(CXXFLAGS) -o $@ $^
+	@echo "Compilação concluída: $@"
 
-info:
-	@echo "Configuração de compilação:"
-	@echo "CXX: $(CXX)"
-	@echo "CXXFLAGS: $(CXXFLAGS)"
-	@echo "LDFLAGS: $(LDFLAGS)"
-	@echo "Threads disponíveis: $(shell nproc)"
+# Linkagem (profile)
+$(BINDIR)/$(TARGET)_profile: $(OBJECTS)
+	@echo "Linkando versão profile..."
+	$(CXX) $(CXXFLAGS) -o $@ $^
+	@echo "Compilação concluída: $@"
 
-benchmark: $(TARGET)
+# Compilação de objetos (release)
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	@echo "Compilando $<..."
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Compilação de objetos (debug)
+$(OBJDIR)/debug/%.o: $(SRCDIR)/%.cpp
+	@echo "Compilando (debug) $<..."
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+# Executa o programa (release)
+run: release
+	./$(BINDIR)/$(TARGET)
+
+# Executa com valgrind para detectar memory leaks
+memcheck: debug
+	valgrind --leak-check=full --show-leak-kinds=all ./$(BINDIR)/$(TARGET_DEBUG)
+
+# Benchmark de performance
+benchmark: release
 	@echo "Executando benchmark..."
-	time ./$(TARGET)
+	time ./$(BINDIR)/$(TARGET)
+
+# Verifica se arquivos de dados existem
+check-data:
+	@test -f datasets/input.dat || (echo "Erro: dataset/input.dat não encontrado" && exit 1)
+	@test -f ml-25m/movies.csv || (echo "Erro: ml-25m/movies.csv não encontrado" && exit 1)
+	@test -f datasets/explore.dat || (echo "Erro: datasets/explore.csv não encontrado" && exit 1)
+	@echo "Todos os arquivos de dados encontrados!"
+
+# Instalação do binário
+install: release
+	@echo "Instalando em /usr/local/bin..."
+	sudo cp $(BINDIR)/$(TARGET) /usr/local/bin/
+	@echo "Instalação concluída!"
+
+# Remove o binário instalado
+uninstall:
+	@echo "Removendo de /usr/local/bin..."
+	sudo rm -f /usr/local/bin/$(TARGET)
+	@echo "Desinstalação concluída!"
+
+# Limpa arquivos compilados
+clean:
+	rm -rf $(BINDIR) $(OBJDIR)
+	rm -f gmon.out
+	@echo "Limpeza concluída!"
+
+# Checar consumo de memória com Massif
+massif: release
+	valgrind --tool=massif --massif-out-file=massif.out ./$(BINDIR)/$(TARGET)
+	ms_print massif.out | less
+
+# Ajuda
+help:
+	@echo "Comandos disponíveis:"
+	@echo "  make            - Compila versão release"
+	@echo "  make debug      - Compila versão debug"
+	@echo "  make profile    - Compila versão com profiling"
+	@echo "  make run        - Executa o programa"
+	@echo "  make memcheck   - Roda valgrind para memory leaks"
+	@echo "  make benchmark  - Executa e mede tempo"
+	@echo "  make check-data - Verifica arquivos de entrada"
+	@echo "  make install    - Instala em /usr/local/bin"
+	@echo "  make uninstall  - Remove de /usr/local/bin"
+	@echo "  make clean      - Limpa arquivos compilados"
+	@echo "  make help       - Exibe esta ajuda"
