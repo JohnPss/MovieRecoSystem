@@ -113,6 +113,11 @@ clean:
 	rm -f gmon.out
 	@echo "Limpeza concluída!"
 
+# Checar consumo de memória com Massif
+massif: release
+	valgrind --tool=massif --massif-out-file=massif.out ./$(BINDIR)/$(TARGET)
+	ms_print massif.out | less
+
 # Ajuda
 help:
 	@echo "Comandos disponíveis:"
