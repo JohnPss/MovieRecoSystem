@@ -69,8 +69,9 @@ private:
         const std::unordered_set<uint32_t> &watchedMovies,
         std::unordered_map<uint32_t, float> &scores);
 
-    std::vector<pair<uint32_t, int>> findCandidateUsersLSH(uint32_t userId);
-
+        std::vector<std::pair<uint32_t, int>> findCandidateUsersLSH(
+            uint32_t userId,
+            const UserProfile &user);
 };
 
 #endif // RECOMMENDATION_ENGINE_H

@@ -108,19 +108,33 @@ void LSHIndex::indexSignatures() {
     cout << "Indexando " << signatures.size() << " assinaturas no LSH..." << endl;
     auto start = chrono::high_resolution_clock::now();
     
-    // Limpa tabelas anteriores
+    // Limpa tabelas anteriores e reserva espaço
     for (auto& table : tables) {
         table.clear();
+        // Estima número de buckets baseado em probabilidade
+        table.reserve(signatures.size() * LSHConfig::NUM_BANDS / 100);
     }
     
-    // Indexa cada assinatura em todas as tabelas
+    // CORREÇÃO: Usa apenas ALGUMAS bands por tabela para criar buckets maiores
+    const int BANDS_PER_TABLE = 3; // Usar apenas 3 bands por vez cria buckets com ~50-100 usuários
+    
+    // Para cada assinatura
     for (const auto& [userId, sig] : signatures) {
+        // Para cada tabela
         for (int tableIdx = 0; tableIdx < LSHConfig::NUM_TABLES; tableIdx++) {
-            // Para cada band nesta tabela
-            for (int bandIdx = 0; bandIdx < LSHConfig::NUM_BANDS; bandIdx++) {
-                size_t bucketHash = hashBand(sig, bandIdx, tableIdx);
-                tables[tableIdx][bucketHash].push_back(userId);
+            // Seleciona quais bands usar para esta tabela
+            int startBand = (tableIdx * BANDS_PER_TABLE) % LSHConfig::NUM_BANDS;
+            
+            // Calcula hash combinando apenas BANDS_PER_TABLE bands
+            size_t combinedHash = 0;
+            for (int i = 0; i < BANDS_PER_TABLE; i++) {
+                int bandIdx = (startBand + i) % LSHConfig::NUM_BANDS;
+                size_t bandHash = hashBand(sig, bandIdx, tableIdx);
+                combinedHash = (combinedHash << 16) ^ bandHash; // Melhor combinação
             }
+            
+            // Adiciona ao bucket
+            tables[tableIdx][combinedHash].push_back(userId);
         }
     }
     
@@ -131,14 +145,22 @@ void LSHIndex::indexSignatures() {
     // Estatísticas
     size_t totalBuckets = 0;
     size_t totalEntries = 0;
+    size_t largeBuckets = 0;
+    size_t maxBucket = 0;
+    
     for (const auto& table : tables) {
         totalBuckets += table.size();
         for (const auto& [_, bucket] : table) {
             totalEntries += bucket.size();
+            if (bucket.size() > 100) largeBuckets++;
+            maxBucket = max(maxBucket, bucket.size());
         }
     }
+    
     cout << "Total de buckets: " << totalBuckets 
-         << ", Média de entradas/bucket: " << totalEntries / (double)totalBuckets << endl;
+         << ", Média de entradas/bucket: " << (totalBuckets > 0 ? totalEntries / (double)totalBuckets : 0)
+         << ", Buckets grandes (>100): " << largeBuckets 
+         << ", Maior bucket: " << maxBucket << endl;
 }
 
 vector<uint32_t> LSHIndex::findSimilarCandidates(uint32_t userId, int maxCandidates) const {
@@ -150,46 +172,83 @@ vector<uint32_t> LSHIndex::findSimilarCandidates(uint32_t userId, int maxCandida
     }
     
     const MinHashSignature& querySignature = it->second;
-    unordered_set<uint32_t> candidateSet;
+    unordered_map<uint32_t, int> candidateCount;
     
-    // Busca em todas as tabelas
+    const int BANDS_PER_TABLE = 3; // Mesmo valor usado na indexação
+    
+    // Para cada tabela
     for (int tableIdx = 0; tableIdx < LSHConfig::NUM_TABLES; tableIdx++) {
-        for (int bandIdx = 0; bandIdx < LSHConfig::NUM_BANDS; bandIdx++) {
-            size_t bucketHash = hashBand(querySignature, bandIdx, tableIdx);
-            
-            auto bucketIt = tables[tableIdx].find(bucketHash);
-            if (bucketIt != tables[tableIdx].end()) {
-                for (uint32_t candidateId : bucketIt->second) {
-                    if (candidateId != userId) {
-                        candidateSet.insert(candidateId);
+        // Usa as mesmas bands que foram usadas na indexação
+        int startBand = (tableIdx * BANDS_PER_TABLE) % LSHConfig::NUM_BANDS;
+        
+        // Calcula o mesmo hash combinado
+        size_t combinedHash = 0;
+        for (int i = 0; i < BANDS_PER_TABLE; i++) {
+            int bandIdx = (startBand + i) % LSHConfig::NUM_BANDS;
+            size_t bandHash = hashBand(querySignature, bandIdx, tableIdx);
+            combinedHash = (combinedHash << 16) ^ bandHash;
+        }
+        
+        // Busca o bucket
+        auto bucketIt = tables[tableIdx].find(combinedHash);
+        if (bucketIt != tables[tableIdx].end()) {
+            for (uint32_t candidateId : bucketIt->second) {
+                if (candidateId != userId) {
+                    candidateCount[candidateId]++;
+                }
+            }
+        }
+    }
+    
+    // Se temos poucos candidatos, relaxa a busca
+    if (candidateCount.size() < 50) {
+        // Busca em buckets vizinhos (técnica de multi-probe LSH)
+        for (int tableIdx = 0; tableIdx < min(3, LSHConfig::NUM_TABLES); tableIdx++) {
+            // Para cada band, tenta pequenas variações
+            for (int probe = 1; probe <= 2; probe++) {
+                int startBand = (tableIdx * BANDS_PER_TABLE) % LSHConfig::NUM_BANDS;
+                size_t combinedHash = 0;
+                
+                for (int i = 0; i < BANDS_PER_TABLE; i++) {
+                    int bandIdx = (startBand + i) % LSHConfig::NUM_BANDS;
+                    size_t bandHash = hashBand(querySignature, bandIdx, tableIdx);
+                    // Adiciona pequena perturbação
+                    bandHash = (bandHash + probe) % LSHConfig::LARGE_PRIME;
+                    combinedHash = (combinedHash << 16) ^ bandHash;
+                }
+                
+                auto bucketIt = tables[tableIdx].find(combinedHash);
+                if (bucketIt != tables[tableIdx].end()) {
+                    for (uint32_t candidateId : bucketIt->second) {
+                        if (candidateId != userId) {
+                            candidateCount[candidateId]++;
+                        }
                     }
                 }
             }
         }
     }
     
-    // Converte para vetor e limita tamanho
-    vector<uint32_t> candidates(candidateSet.begin(), candidateSet.end());
+    // Converte para vetor, priorizando candidatos que aparecem em múltiplas tabelas
+    vector<pair<int, uint32_t>> scoredCandidates;
+    scoredCandidates.reserve(candidateCount.size());
     
-    // Se temos muitos candidatos, podemos fazer uma pré-filtragem baseada em Jaccard estimado
-    if (candidates.size() > maxCandidates * 2) {
-        vector<pair<float, uint32_t>> scoredCandidates;
-        scoredCandidates.reserve(candidates.size());
-        
-        for (uint32_t candidateId : candidates) {
-            float similarity = estimateJaccardSimilarity(userId, candidateId);
-            scoredCandidates.push_back({similarity, candidateId});
-        }
-        
-        partial_sort(scoredCandidates.begin(), 
-                    scoredCandidates.begin() + min((int)scoredCandidates.size(), maxCandidates),
-                    scoredCandidates.end(),
-                    greater<pair<float, uint32_t>>());
-        
-        candidates.clear();
-        for (int i = 0; i < min((int)scoredCandidates.size(), maxCandidates); i++) {
-            candidates.push_back(scoredCandidates[i].second);
-        }
+    for (const auto& [candidateId, count] : candidateCount) {
+        // Score baseado em: frequência + similaridade estimada
+        float similarity = estimateJaccardSimilarity(userId, candidateId);
+        float score = count * 0.3f + similarity * 0.7f;
+        scoredCandidates.push_back({score * 1000, candidateId}); // Multiplica para usar como int
+    }
+    
+    // Ordena por score
+    sort(scoredCandidates.begin(), scoredCandidates.end(), greater<pair<int, uint32_t>>());
+    
+    // Extrai os top candidatos
+    vector<uint32_t> candidates;
+    candidates.reserve(min((int)scoredCandidates.size(), maxCandidates));
+    
+    for (int i = 0; i < min((int)scoredCandidates.size(), maxCandidates); i++) {
+        candidates.push_back(scoredCandidates[i].second);
     }
     
     return candidates;
@@ -220,15 +279,16 @@ size_t LSHIndex::hashBand(const MinHashSignature& sig, int bandIdx, int tableIdx
     size_t hash = 0;
     int startIdx = bandIdx * LSHConfig::ROWS_PER_BAND;
     
-    // Combina valores da band usando hash universal
+    // Hash mais robusto para bands
     for (int i = 0; i < LSHConfig::ROWS_PER_BAND; i++) {
         uint32_t val = sig.signature[startIdx + i];
-        hash ^= (bandHashParams[tableIdx][bandIdx].a * val + 
-                bandHashParams[tableIdx][bandIdx].b) % LSHConfig::LARGE_PRIME;
-        hash = (hash << 1) | (hash >> 31); // Rotate
+        uint64_t temp = (uint64_t)bandHashParams[tableIdx][bandIdx].a * val + 
+                        bandHashParams[tableIdx][bandIdx].b;
+        // Reduz o espaço de hash para criar mais colisões (buckets maiores)
+        hash = (hash * 37 + (temp % 1000000)) % LSHConfig::LARGE_PRIME;
     }
     
-    return hash;
+    return hash % 1000000; // Limita o espaço de hash para garantir buckets maiores
 }
 
 vector<pair<uint32_t, uint32_t>> LSHIndex::generateHashFunctions() {
@@ -250,26 +310,41 @@ void LSHIndex::printStatistics() const {
     cout << "Tabelas: " << LSHConfig::NUM_TABLES << endl;
     cout << "Bands por tabela: " << LSHConfig::NUM_BANDS << endl;
     
-    // Análise de distribuição
+    // Análise detalhada de distribuição
     size_t totalBuckets = 0;
     size_t emptyBuckets = 0;
+    size_t smallBuckets = 0;  // < 10 usuários
+    size_t mediumBuckets = 0; // 10-100 usuários
+    size_t largeBuckets = 0;  // > 100 usuários
     size_t maxBucketSize = 0;
     double avgBucketSize = 0;
     
     for (const auto& table : tables) {
         for (const auto& [_, bucket] : table) {
             totalBuckets++;
-            if (bucket.empty()) emptyBuckets++;
-            maxBucketSize = max(maxBucketSize, bucket.size());
-            avgBucketSize += bucket.size();
+            size_t size = bucket.size();
+            
+            if (size == 0) emptyBuckets++;
+            else if (size < 10) smallBuckets++;
+            else if (size <= 100) mediumBuckets++;
+            else largeBuckets++;
+            
+            maxBucketSize = max(maxBucketSize, size);
+            avgBucketSize += size;
         }
     }
     
-    avgBucketSize /= totalBuckets;
+    if (totalBuckets > 0) {
+        avgBucketSize /= totalBuckets;
+    }
     
     cout << "Total de buckets: " << totalBuckets << endl;
-    cout << "Buckets vazios: " << emptyBuckets << endl;
-    cout << "Tamanho médio do bucket: " << avgBucketSize << endl;
+    cout << "Distribuição de buckets:" << endl;
+    cout << "  Vazios: " << emptyBuckets << endl;
+    cout << "  Pequenos (<10): " << smallBuckets << endl;
+    cout << "  Médios (10-100): " << mediumBuckets << endl;
+    cout << "  Grandes (>100): " << largeBuckets << endl;
+    cout << "Tamanho médio: " << avgBucketSize << endl;
     cout << "Maior bucket: " << maxBucketSize << " usuários" << endl;
     cout << "=========================" << endl;
 }
