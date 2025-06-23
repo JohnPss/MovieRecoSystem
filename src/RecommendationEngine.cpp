@@ -14,9 +14,11 @@ RecommendationEngine::RecommendationEngine(
     const unordered_map<uint32_t, float> &mar,
     const unordered_map<uint32_t, int> &mp,
     float gar,
-    SimilarityCalculator &sc) : users(u), movies(m), movieToUsers(mtu), genreToMovies(gtm),
+    SimilarityCalculator &sc,
+    LSHIndex& lsh 
+) : users(u), movies(m), movieToUsers(mtu), genreToMovies(gtm),
                                 movieAvgRatings(mar), moviePopularity(mp), globalAvgRating(gar),
-                                similarityCalc(sc) {}
+                                similarityCalc(sc), lshIndex(lsh) {}
 
 vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
 {
@@ -36,7 +38,15 @@ vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
     }
 
     // 1. Encontra candidatos similares
-    auto candidates = findCandidateUsers(userId, user);
+    // 1. Encontra candidatos similares (PONTO DA OTIMIZAÇÃO)
+    vector<pair<uint32_t, int>> candidates;
+    if (Config::USE_LSH) {
+        // NOVO: Chama a versão rápida com LSH
+        candidates = findCandidateUsersLSH(userId);
+    } else {
+        // Mantém o método antigo como fallback
+        candidates = findCandidateUsers(userId, user);
+    }
 
     // 2. Calcula similaridades
     auto similarUsers = calculateSimilarities(userId, candidates);
@@ -275,4 +285,25 @@ void RecommendationEngine::popularityFallback(
             scores[popularMovies[i].first] = popularMovies[i].second / 100.0f;
         }
     }
+}
+
+// FUNÇÃO TOTALMENTE NOVA: Busca candidatos usando o índice LSH
+vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(uint32_t userId)
+{
+    // 1. Chama o LSH para obter uma lista de candidatos em tempo O(1) (aproximadamente)
+    vector<uint32_t> candidatesFromLSH = lshIndex.findSimilarCandidates(userId, Config::MAX_CANDIDATES);
+    
+    // 2. Converte a lista para o formato que o resto do pipeline espera
+    // A função `calculateSimilarities` só usa o ID do usuário, então o segundo valor (contagem) pode ser um placeholder.
+    vector<pair<uint32_t, int>> filteredCandidates;
+    filteredCandidates.reserve(candidatesFromLSH.size());
+    
+    for (uint32_t candidateId : candidatesFromLSH) {
+        // Opcional: Adiciona uma verificação para garantir que o candidato retornado pelo LSH ainda existe no mapa principal de usuários
+        if (users.count(candidateId)) {
+            filteredCandidates.push_back({candidateId, 0}); // O segundo valor (int) é um placeholder
+        }
+    }
+
+    return filteredCandidates;
 }

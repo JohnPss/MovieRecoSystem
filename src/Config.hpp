@@ -13,6 +13,8 @@ namespace Config
     const float MIN_RATING = 3.5f;     // Rating mínimo para considerar positivo
     const float MIN_SIMILARITY = 0.1f; // Similaridade mínima para considerar usuário
 
+    extern bool USE_LSH; 
+
     // Parâmetros de performance
     const int NUM_THREADS = std::thread::hardware_concurrency();
     const int BATCH_SIZE = 100;      // Tamanho do batch para processamento paralelo

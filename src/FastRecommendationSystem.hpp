@@ -8,6 +8,8 @@
 #include "DataLoader.hpp"
 #include "SimilarityCalculator.hpp"
 #include "RecommendationEngine.hpp"
+#include "LSHIndex.hpp" 
+
 
 class FastRecommendationSystem
 {
@@ -30,6 +32,7 @@ private:
     DataLoader *dataLoader;
     SimilarityCalculator *similarityCalculator;
     RecommendationEngine *recommendationEngine;
+    LSHIndex* lshIndex; 
 
 public:
     FastRecommendationSystem();

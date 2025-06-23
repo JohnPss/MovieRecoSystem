@@ -7,6 +7,9 @@
 #include <future>
 #include "DataStructures.hpp"
 #include "SimilarityCalculator.hpp"
+#include "LSHIndex.hpp"
+
+using namespace std;
 
 class RecommendationEngine
 {
@@ -20,6 +23,8 @@ private:
     float globalAvgRating;
 
     SimilarityCalculator &similarityCalc;
+    LSHIndex& lshIndex;
+
 
 public:
     RecommendationEngine(
@@ -30,7 +35,8 @@ public:
         const std::unordered_map<uint32_t, float> &mar,
         const std::unordered_map<uint32_t, int> &mp,
         float gar,
-        SimilarityCalculator &sc);
+        SimilarityCalculator &sc,
+        LSHIndex& lshIndex);
 
     // Gera recomendações para um usuário
     std::vector<Recommendation> recommendForUser(uint32_t userId);
@@ -62,6 +68,9 @@ private:
     void popularityFallback(
         const std::unordered_set<uint32_t> &watchedMovies,
         std::unordered_map<uint32_t, float> &scores);
+
+    std::vector<pair<uint32_t, int>> findCandidateUsersLSH(uint32_t userId);
+
 };
 
 #endif // RECOMMENDATION_ENGINE_H
