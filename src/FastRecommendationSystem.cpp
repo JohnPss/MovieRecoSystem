@@ -3,7 +3,8 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
-#include <memory> // NOVO: Necessário para std::unique_ptr
+#include <memory> // Necessário para std::unique_ptr
+#include <fstream> // NOVO: Para gravar recomendações em arquivo
 
 using namespace std;
 using namespace chrono;
@@ -45,7 +46,6 @@ void FastRecommendationSystem::loadData()
         cout << "\n--- Iniciando construção do índice LSH ---" << endl;
         
         // --- MODIFICAÇÃO PRINCIPAL: Alocando o mapa no HEAP ---
-        // Em vez de um objeto na pilha, usamos um ponteiro inteligente para evitar stack overflow.
         auto userRatingsForLSH = make_unique<unordered_map<uint32_t, vector<pair<uint32_t, float>>>>();
         userRatingsForLSH->reserve(users.size());
         
@@ -53,9 +53,7 @@ void FastRecommendationSystem::loadData()
             (*userRatingsForLSH)[userId] = profile.ratings;
         }
 
-        // Passamos o mapa para a função LSH usando o desreferenciamento do ponteiro.
         lshIndex->buildSignatures(*userRatingsForLSH, Config::NUM_THREADS);
-        
         lshIndex->indexSignatures();
         lshIndex->printStatistics();
 
@@ -70,6 +68,10 @@ void FastRecommendationSystem::processRecommendations(const string &filename)
     cout << "\nGerando recomendações para " << userIds.size() << " usuários..." << endl;
     auto totalStart = high_resolution_clock::now();
 
+    // NOVO: Limpa/Sobrescreve o arquivo de resultados antes de começar
+    ofstream resultFile("result", ios::trunc);
+    resultFile.close();
+
     for (uint32_t userId : userIds)
     {
         auto start = high_resolution_clock::now();
@@ -77,7 +79,7 @@ void FastRecommendationSystem::processRecommendations(const string &filename)
         auto end = high_resolution_clock::now();
         auto duration = duration_cast<milliseconds>(end - start);
 
-        cout << "\nUsuário " << userId << " (" << duration.count() << "ms):" << endl;
+        // cout << "\nUsuário " << userId << " (" << duration.count() << "ms):" << endl;
         printRecommendations(userId, recommendations);
     }
 
@@ -96,17 +98,26 @@ void FastRecommendationSystem::printRecommendations(
     uint32_t userId,
     const vector<Recommendation> &recommendations)
 {
+    // NOVO: Abre o arquivo em modo append
+    ofstream resultFile("result", ios::app);
+    if (!resultFile.is_open()) {
+        cerr << "Erro ao abrir arquivo de resultados!" << endl;
+        return;
+    }
+
     int count = 0;
-    cout << "  Recomendações:" << endl;
+    // Escreve cabeçalho para cada usuário
     for (const auto &rec : recommendations)
     {
         auto movieIt = movies.find(rec.movieId);
         if (movieIt != movies.end() && count < 10)
         {
-            cout << "    " << (count + 1) << ". " << movieIt->second.title
-                 << " (Score: " << fixed << setprecision(2)
-                 << rec.score << ")" << endl;
+            resultFile << "  " << (count + 1) << ". " << movieIt->second.title
+                       << " (Score: " << fixed << setprecision(2)
+                       << rec.score << ")" << endl;
             count++;
         }
     }
+    resultFile << endl;
+    resultFile.close();
 }
