@@ -30,88 +30,97 @@ LSHIndex::LSHIndex() : rng(std::random_device{}())
 void LSHIndex::buildSignatures(
     const unordered_map<uint32_t, vector<pair<uint32_t, float>>> &userRatings,
     int numThreads)
-{
-
+ {
     cout << "Construindo assinaturas MinHash para " << userRatings.size()
          << " usuários..." << endl;
     auto start = chrono::high_resolution_clock::now();
-
-    // Coleta todos os userIds
-    vector<uint32_t> userIds;
-    userIds.reserve(userRatings.size());
-    for (const auto &[userId, _] : userRatings)
-    {
-        userIds.push_back(userId);
-    }
-
-    // Processa em paralelo
-    const size_t chunkSize = (userIds.size() + numThreads - 1) / numThreads;
-    vector<future<vector<MinHashSignature>>> futures;
-
+ 
     // Gera funções hash uma vez (compartilhadas entre threads)
     auto hashFunctions = generateHashFunctions();
-
-    for (int t = 0; t < numThreads; t++)
-    {
-        size_t start = t * chunkSize;
-        size_t end = min(start + chunkSize, userIds.size());
-
-        if (start < userIds.size())
-        {
-            futures.push_back(async(launch::async, [&, start, end, hashFunctions]()
-                                    {
-                vector<MinHashSignature> localSignatures;
-                localSignatures.reserve(end - start);
-                
-                for (size_t i = start; i < end; i++) {
-                    uint32_t userId = userIds[i];
-                    auto it = userRatings.find(userId);
-                    if (it != userRatings.end()) {
-                        // Extrai apenas movieIds (ignora ratings para MinHash)
-                        vector<uint32_t> movies;
-                        movies.reserve(it->second.size());
-                        for (const auto& [movieId, _] : it->second) {
-                            movies.push_back(movieId);
-                        }
-                        
-                        // Computa MinHash
-                        MinHashSignature sig(userId);
-                        
-                        // Para cada função hash, encontra o mínimo
-                        for (int h = 0; h < Config::NUM_HASH_FUNCTIONS; h++) {
-                            uint32_t minHash = UINT32_MAX;
-                            for (uint32_t movie : movies) {
-                                uint32_t hash = (hashFunctions[h].first * movie + 
-                                               hashFunctions[h].second) % Config::LARGE_PRIME;
-                                minHash = min(minHash, hash);
-                            }
-                            sig.signature[h] = minHash;
-                        }
-                        
-                        localSignatures.push_back(move(sig));
-                    }
-                }
-                return localSignatures; }));
+ 
+    // Pré-computa hashes para todos os filmes únicos
+    unordered_set<uint32_t> allMovies;
+    for (const auto &[userId, ratings] : userRatings) {
+        for (const auto &[movieId, _] : ratings) {
+            allMovies.insert(movieId);
         }
     }
-
+ 
+    cout << "Pré-computando hashes para " << allMovies.size() << " filmes..." << endl;
+    unordered_map<uint32_t, vector<uint32_t>> precomputedHashes;
+    precomputedHashes.reserve(allMovies.size());
+    
+    for (uint32_t movieId : allMovies) {
+        vector<uint32_t> hashes(Config::NUM_HASH_FUNCTIONS);
+        for (int h = 0; h < Config::NUM_HASH_FUNCTIONS; h++) {
+            hashes[h] = (hashFunctions[h].first * movieId + 
+                        hashFunctions[h].second) % Config::LARGE_PRIME;
+        }
+        precomputedHashes[movieId] = move(hashes);
+    }
+ 
+    // Converte para vector de pares para divisão mais eficiente
+    vector<pair<uint32_t, const vector<pair<uint32_t, float>>*>> userVector;
+    userVector.reserve(userRatings.size());
+    for (const auto &[userId, ratings] : userRatings) {
+        userVector.emplace_back(userId, &ratings);
+    }
+ 
+    // Processa em paralelo
+    const size_t chunkSize = (userVector.size() + numThreads - 1) / numThreads;
+    vector<future<vector<MinHashSignature>>> futures;
+ 
+    for (int t = 0; t < numThreads; t++) {
+        size_t startIdx = t * chunkSize;
+        size_t endIdx = min(startIdx + chunkSize, userVector.size());
+ 
+        if (startIdx < userVector.size()) {
+            futures.push_back(async(launch::async, [&, startIdx, endIdx]() {
+                vector<MinHashSignature> localSignatures;
+                localSignatures.reserve(endIdx - startIdx);
+                
+                for (size_t i = startIdx; i < endIdx; i++) {
+                    uint32_t userId = userVector[i].first;
+                    const auto& ratings = *userVector[i].second;
+                    
+                    // Computa MinHash
+                    MinHashSignature sig(userId);
+                    
+                    // Inicializa com valores máximos
+                    for (int h = 0; h < Config::NUM_HASH_FUNCTIONS; h++) {
+                        sig.signature[h] = UINT32_MAX;
+                    }
+                    
+                    // Para cada filme, atualiza o mínimo usando hashes pré-computados
+                    for (const auto& [movieId, _] : ratings) {
+                        const auto& movieHashes = precomputedHashes.at(movieId);
+                        for (int h = 0; h < Config::NUM_HASH_FUNCTIONS; h++) {
+                            sig.signature[h] = min(sig.signature[h], movieHashes[h]);
+                        }
+                    }
+                    
+                    localSignatures.push_back(move(sig));
+                }
+                return localSignatures;
+            }));
+        }
+    }
+ 
     // Coleta resultados
     {
         lock_guard<mutex> lock(indexMutex);
-        for (auto &future : futures)
-        {
+        for (auto &future : futures) {
             auto localSigs = future.get();
-            for (auto &sig : localSigs)
-            {
+            for (auto &sig : localSigs) {
                 signatures[sig.userId] = move(sig);
             }
         }
     }
-
+ 
     auto end = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
     cout << "Assinaturas construídas em " << duration.count() << "ms" << endl;
-}
+ }
 
 void LSHIndex::indexSignatures()
 {

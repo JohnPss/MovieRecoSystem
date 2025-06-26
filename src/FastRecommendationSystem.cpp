@@ -6,7 +6,7 @@
 #include <memory> // Necessário para std::unique_ptr
 #include <fstream> // NOVO: Para gravar recomendações em arquivo
 
-using namespace std;
+using namespace std;                            
 using namespace chrono;
 
 FastRecommendationSystem::FastRecommendationSystem() : globalAvgRating(0.0f)
