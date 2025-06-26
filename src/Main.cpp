@@ -5,6 +5,8 @@
 #include <vector> // NOVO: para processar argumentos
 #include "FastRecommendationSystem.hpp"
 #include "Config.hpp"
+#include "preProcessamento.hpp"
+
 
 using namespace std;
 using namespace chrono;
@@ -23,6 +25,19 @@ void printHelp()
 
 int main(int argc, char *argv[])
 {
+
+    using namespace std::chrono;
+
+    auto start = high_resolution_clock::now();
+
+    int result = process_ratings_file();
+
+    auto end = high_resolution_clock::now();
+    duration<double> elapsed = end - start;
+
+    std::cout << "Tempo de execução: " << elapsed.count() << " segundos\n";
+
+
     // --- NOVO: Processamento de Argumentos de Linha de Comando ---
     vector<string> args(argv + 1, argv + argc);
     bool runBenchmark = false;
