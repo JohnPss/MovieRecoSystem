@@ -8,6 +8,8 @@
 #include "DataLoader.hpp"
 #include "SimilarityCalculator.hpp"
 #include "RecommendationEngine.hpp"
+#include "LSHIndex.hpp" 
+
 
 class FastRecommendationSystem
 {
@@ -30,6 +32,7 @@ private:
     DataLoader *dataLoader;
     SimilarityCalculator *similarityCalculator;
     RecommendationEngine *recommendationEngine;
+    LSHIndex* lshIndex; 
 
 public:
     FastRecommendationSystem();
@@ -45,7 +48,6 @@ public:
     std::vector<Recommendation> recommendForUser(uint32_t userId);
 
 private:
-    void printRecommendations(uint32_t userId, const std::vector<Recommendation> &recommendations);
-};
+    void printRecommendations(uint32_t userId, const std::vector<Recommendation> &recommendations);};
 
 #endif // FAST_RECOMMENDATION_SYSTEM_H

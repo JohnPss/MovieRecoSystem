@@ -3,8 +3,10 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
+#include <memory> // Necessário para std::unique_ptr
+#include <fstream> // NOVO: Para gravar recomendações em arquivo
 
-using namespace std;
+using namespace std;                            
 using namespace chrono;
 
 FastRecommendationSystem::FastRecommendationSystem() : globalAvgRating(0.0f)
@@ -14,11 +16,17 @@ FastRecommendationSystem::FastRecommendationSystem() : globalAvgRating(0.0f)
         globalAvgRating, movieAvgRatings, moviePopularity);
 
     similarityCalculator = new SimilarityCalculator(users);
+    
+    // Instancia o índice LSH
+    lshIndex = new LSHIndex();
 
+    // Passa a referência do LSH para o motor de recomendação
     recommendationEngine = new RecommendationEngine(
         users, movies, movieToUsers, genreToMovies,
         movieAvgRatings, moviePopularity, globalAvgRating,
-        *similarityCalculator);
+        *similarityCalculator, 
+        *lshIndex 
+    );
 }
 
 FastRecommendationSystem::~FastRecommendationSystem()
@@ -26,12 +34,31 @@ FastRecommendationSystem::~FastRecommendationSystem()
     delete dataLoader;
     delete similarityCalculator;
     delete recommendationEngine;
+    delete lshIndex;
 }
 
 void FastRecommendationSystem::loadData()
 {
     dataLoader->loadRatings(Config::RATINGS_FILE);
     dataLoader->loadMovies(Config::MOVIES_FILE);
+    
+    if (Config::USE_LSH) {
+        cout << "\n--- Iniciando construção do índice LSH ---" << endl;
+        
+        // --- MODIFICAÇÃO PRINCIPAL: Alocando o mapa no HEAP ---
+        auto userRatingsForLSH = make_unique<unordered_map<uint32_t, vector<pair<uint32_t, float>>>>();
+        userRatingsForLSH->reserve(users.size());
+        
+        for (const auto& [userId, profile] : users) {
+            (*userRatingsForLSH)[userId] = profile.ratings;
+        }
+
+        lshIndex->buildSignatures(*userRatingsForLSH, Config::NUM_THREADS);
+        lshIndex->indexSignatures();
+        lshIndex->printStatistics();
+
+        cout << "--- Construção do índice LSH concluída ---\n" << endl;
+    }
 }
 
 void FastRecommendationSystem::processRecommendations(const string &filename)
@@ -41,23 +68,25 @@ void FastRecommendationSystem::processRecommendations(const string &filename)
     cout << "\nGerando recomendações para " << userIds.size() << " usuários..." << endl;
     auto totalStart = high_resolution_clock::now();
 
+    // NOVO: Limpa/Sobrescreve o arquivo de resultados antes de começar
+    ofstream resultFile("result", ios::trunc);
+    resultFile.close();
+
     for (uint32_t userId : userIds)
     {
         auto start = high_resolution_clock::now();
-
         vector<Recommendation> recommendations = recommendForUser(userId);
-
         auto end = high_resolution_clock::now();
         auto duration = duration_cast<milliseconds>(end - start);
 
-        cout << "\nUsuário " << userId << " (" << duration.count() << "ms):" << endl;
+        // cout << "\nUsuário " << userId << " (" << duration.count() << "ms):" << endl;
         printRecommendations(userId, recommendations);
     }
 
     auto totalEnd = high_resolution_clock::now();
     auto totalDuration = duration_cast<milliseconds>(totalEnd - totalStart);
     cout << "\nTempo de recomendações: " << totalDuration.count() << "ms" << endl;
-    cout << "Tempo médio por usuário: " << totalDuration.count() / userIds.size() << "ms" << endl;
+    cout << "Tempo médio por usuário: " << (userIds.empty() ? 0 : totalDuration.count() / userIds.size()) << "ms" << endl;
 }
 
 vector<Recommendation> FastRecommendationSystem::recommendForUser(uint32_t userId)
@@ -69,16 +98,26 @@ void FastRecommendationSystem::printRecommendations(
     uint32_t userId,
     const vector<Recommendation> &recommendations)
 {
+    // NOVO: Abre o arquivo em modo append
+    ofstream resultFile("result", ios::app);
+    if (!resultFile.is_open()) {
+        cerr << "Erro ao abrir arquivo de resultados!" << endl;
+        return;
+    }
+
     int count = 0;
+    // Escreve cabeçalho para cada usuário
     for (const auto &rec : recommendations)
     {
         auto movieIt = movies.find(rec.movieId);
         if (movieIt != movies.end() && count < 10)
         {
-            cout << "  " << (count + 1) << ". " << movieIt->second.title
-                 << " (Score: " << fixed << setprecision(2)
-                 << rec.score << ")" << endl;
+            resultFile << "  " << (count + 1) << ". " << movieIt->second.title
+                       << " (Score: " << fixed << setprecision(2)
+                       << rec.score << ")" << endl;
             count++;
         }
     }
+    resultFile << endl;
+    resultFile.close();
 }

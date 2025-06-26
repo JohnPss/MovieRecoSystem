@@ -14,11 +14,17 @@ BINDIR = bin
 OBJDIR = obj
 
 # Fontes e objetos
-SOURCES = $(SRCDIR)/Main.cpp \
-          $(SRCDIR)/FastRecommendationSystem.cpp \
-          $(SRCDIR)/DataLoader.cpp \
-          $(SRCDIR)/SimilarityCalculator.cpp \
-          $(SRCDIR)/RecommendationEngine.cpp
+# MODIFICAÇÃO: Adicionamos LSHIndex.cpp à lista de fontes.
+# A forma com 'wildcard' abaixo é ainda melhor, pois encontra todos os .cpp automaticamente.
+SOURCES = $(wildcard $(SRCDIR)/*.cpp)
+
+# Se preferir a lista manual, seria assim:
+# SOURCES = $(SRCDIR)/Main.cpp \
+#           $(SRCDIR)/FastRecommendationSystem.cpp \
+#           $(SRCDIR)/DataLoader.cpp \
+#           $(SRCDIR)/SimilarityCalculator.cpp \
+#           $(SRCDIR)/RecommendationEngine.cpp \
+#           $(SRCDIR)/LSHIndex.cpp
 
 OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 OBJECTS_DEBUG = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/debug/%.o,$(SOURCES))

@@ -14,9 +14,11 @@ RecommendationEngine::RecommendationEngine(
     const unordered_map<uint32_t, float> &mar,
     const unordered_map<uint32_t, int> &mp,
     float gar,
-    SimilarityCalculator &sc) : users(u), movies(m), movieToUsers(mtu), genreToMovies(gtm),
+    SimilarityCalculator &sc,
+    LSHIndex& lsh 
+) : users(u), movies(m), movieToUsers(mtu), genreToMovies(gtm),
                                 movieAvgRatings(mar), moviePopularity(mp), globalAvgRating(gar),
-                                similarityCalc(sc) {}
+                                similarityCalc(sc), lshIndex(lsh) {}
 
 vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
 {
@@ -36,7 +38,15 @@ vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
     }
 
     // 1. Encontra candidatos similares
-    auto candidates = findCandidateUsers(userId, user);
+    // 1. Encontra candidatos similares (PONTO DA OTIMIZAÇÃO)
+    vector<pair<uint32_t, int>> candidates;
+    if (Config::USE_LSH) {
+        // NOVO: Chama a versão rápida com LSH
+        candidates = findCandidateUsersLSH(userId, user);
+    } else {
+        // Mantém o método antigo como fallback
+        candidates = findCandidateUsers(userId, user);
+    }
 
     // 2. Calcula similaridades
     auto similarUsers = calculateSimilarities(userId, candidates);
@@ -275,4 +285,128 @@ void RecommendationEngine::popularityFallback(
             scores[popularMovies[i].first] = popularMovies[i].second / 100.0f;
         }
     }
+}
+
+// FUNÇÃO TOTALMENTE NOVA: Busca candidatos usando o índice LSH
+vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
+    uint32_t userId,
+    const UserProfile &user) {
+    
+    // Obtém candidatos do LSH
+    vector<uint32_t> lshCandidates = lshIndex.findSimilarCandidates(userId, Config::MAX_CANDIDATES * 2);
+    
+    // IMPORTANTE: Precisamos calcular quantos filmes em comum cada candidato tem
+    // Isso é CRÍTICO para o algoritmo funcionar corretamente
+    vector<pair<uint32_t, int>> candidatesWithCount;
+    candidatesWithCount.reserve(lshCandidates.size());
+    
+    for (uint32_t candidateId : lshCandidates) {
+        auto it = users.find(candidateId);
+        if (it == users.end()) continue;
+        
+        const auto& candidateRatings = it->second.ratings;
+        
+        // Conta filmes em comum usando merge (arrays ordenados)
+        int commonCount = 0;
+        size_t i = 0, j = 0;
+        while (i < user.ratings.size() && j < candidateRatings.size()) {
+            if (user.ratings[i].first < candidateRatings[j].first) {
+                i++;
+            } else if (user.ratings[i].first > candidateRatings[j].first) {
+                j++;
+            } else {
+                commonCount++;
+                i++;
+                j++;
+            }
+        }
+        
+        // Só adiciona se tem filmes suficientes em comum
+        if (commonCount >= Config::MIN_COMMON_ITEMS) {
+            candidatesWithCount.push_back({candidateId, commonCount});
+        }
+    }
+    
+    // CRÍTICO: Ordena por número de filmes em comum (não por ID!)
+    sort(candidatesWithCount.begin(), candidatesWithCount.end(),
+         [](const auto &a, const auto &b) { return a.second > b.second; });
+    
+    // Se temos poucos candidatos após filtrar, busca mais via força bruta parcial
+    if (candidatesWithCount.size() < 20) {
+        // Fallback: busca nos filmes mais populares do usuário
+        unordered_map<uint32_t, int> additionalCandidates;
+        
+        // Pega os 10 filmes mais bem avaliados do usuário
+        vector<pair<float, uint32_t>> topRatedMovies;
+        for (const auto& [movieId, rating] : user.ratings) {
+            if (rating >= 4.0f) {
+                topRatedMovies.push_back({rating, movieId});
+            }
+        }
+        sort(topRatedMovies.begin(), topRatedMovies.end(), greater<pair<float, uint32_t>>());
+        
+        // Para cada filme top, adiciona alguns usuários que também gostaram
+        int moviesChecked = 0;
+        for (const auto& [rating, movieId] : topRatedMovies) {
+            if (moviesChecked++ >= 10) break;
+            
+            auto movieIt = movieToUsers.find(movieId);
+            if (movieIt != movieToUsers.end()) {
+                // Pega usuários que deram nota alta para este filme
+                for (const auto& [otherUser, otherRating] : movieIt->second) {
+                    if (otherUser != userId && otherRating >= 4.0f) {
+                        additionalCandidates[otherUser]++;
+                    }
+                }
+            }
+        }
+        
+        // Adiciona candidatos adicionais que não estavam no LSH
+        for (const auto& [candidateId, sharedHighRated] : additionalCandidates) {
+            // Verifica se já não está na lista
+            bool alreadyIncluded = false;
+            for (const auto& [existingId, _] : candidatesWithCount) {
+                if (existingId == candidateId) {
+                    alreadyIncluded = true;
+                    break;
+                }
+            }
+            
+            if (!alreadyIncluded && sharedHighRated >= 3) {
+                // Conta filmes em comum
+                auto it = users.find(candidateId);
+                if (it != users.end()) {
+                    const auto& candidateRatings = it->second.ratings;
+                    int commonCount = 0;
+                    size_t i = 0, j = 0;
+                    while (i < user.ratings.size() && j < candidateRatings.size()) {
+                        if (user.ratings[i].first < candidateRatings[j].first) {
+                            i++;
+                        } else if (user.ratings[i].first > candidateRatings[j].first) {
+                            j++;
+                        } else {
+                            commonCount++;
+                            i++;
+                            j++;
+                        }
+                    }
+                    
+                    if (commonCount >= Config::MIN_COMMON_ITEMS) {
+                        candidatesWithCount.push_back({candidateId, commonCount});
+                    }
+                }
+            }
+        }
+        
+        // Re-ordena com os novos candidatos
+        sort(candidatesWithCount.begin(), candidatesWithCount.end(),
+             [](const auto &a, const auto &b) { return a.second > b.second; });
+    }
+    
+    // Limita ao máximo configurado
+    if (candidatesWithCount.size() > Config::MAX_SIMILAR_USERS) {
+        candidatesWithCount.resize(Config::MAX_SIMILAR_USERS);
+    }
+    
+    return candidatesWithCount;
 }
