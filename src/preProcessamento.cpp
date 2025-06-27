@@ -85,13 +85,12 @@ void process_chunk(DataChunk *chunk)
     if (current_pos < end_pos)
         current_pos++;
 
-    chunk->local_user_data.reserve(20000);
-    chunk->local_movie_count.reserve(80000);
+    // OTIMIZAÇÃO: Reservas mais realistas
+    chunk->local_user_data.reserve(50000);   // Aumentado
+    chunk->local_movie_count.reserve(60000);  // Ajustado
 
     while (current_pos < end_pos)
     {
-        char *line_start = current_pos;
-
         // Parse userId
         int userId = safe_fast_stoi(current_pos, end_pos);
         if (current_pos >= end_pos || *current_pos != ',')
@@ -177,6 +176,9 @@ int process_ratings_file()
         close(fd);
         return 1;
     }
+    
+    // OTIMIZAÇÃO: Advise ao kernel sobre padrão de acesso
+    madvise(file_data, sb.st_size, MADV_SEQUENTIAL);
     close(fd);
 
     char *current_pos = file_data;
@@ -216,8 +218,9 @@ int process_ratings_file()
     std::unordered_map<int, std::vector<Rating>> avaliacoes;
     std::unordered_map<int, int> movie_count;
 
-    avaliacoes.reserve(400000);
-    movie_count.reserve(100000);
+    // OTIMIZAÇÃO: Reservas mais precisas
+    avaliacoes.reserve(300000);   // MovieLens tem ~280k usuários
+    movie_count.reserve(60000);    // ~60k filmes
 
     for (const auto &chunk : chunks)
     {
@@ -240,7 +243,7 @@ int process_ratings_file()
 
     // --- Filtrar filmes com mais de 50 avaliações ---
     std::unordered_set<int> valid_movies;
-    valid_movies.reserve(movie_count.size() / 4);
+    valid_movies.reserve(20000);  // ~20k filmes passam o filtro
 
     for (const auto &movie_pair : movie_count)
     {
@@ -263,8 +266,8 @@ int process_ratings_file()
         return 1;
     }
 
-    // Buffer grande para escrita
-    const size_t BUFFER_SIZE = 1024 * 1024; // 1MB
+    // OTIMIZAÇÃO: Buffer muito maior para escrita
+    const size_t BUFFER_SIZE = 4 * 1024 * 1024; // 4MB
     std::vector<char> write_buffer(BUFFER_SIZE);
     size_t buffer_pos = 0;
 
@@ -287,70 +290,50 @@ int process_ratings_file()
         buffer_pos += len;
     };
 
-    // Pre-filtrar usuários com >50 avaliações
-    std::vector<std::pair<int, std::vector<Rating>>> valid_users;
-    valid_users.reserve(avaliacoes.size() / 3);
+    // OTIMIZAÇÃO PRINCIPAL: Escreve diretamente sem criar estrutura intermediária
+    char line_buffer[16384];  // Buffer maior
+    int users_written = 0;
 
-    int users_with_valid_movies = 0;
-
-    for (auto &user_pair : avaliacoes)
+    for (const auto &[userId, ratings] : avaliacoes)
     {
-        if (user_pair.second.size() > 50)
+        if (ratings.size() <= 50) continue;
+
+        // Conta ratings válidos on-the-fly
+        int valid_count = 0;
+        for (const auto &rating : ratings)
         {
-            // Filtrar apenas filmes válidos
-            std::vector<Rating> filtered_ratings;
-            filtered_ratings.reserve(user_pair.second.size());
-
-            for (const auto &rating : user_pair.second)
+            if (valid_movies.count(rating.movieId))
             {
-                if (valid_movies.count(rating.movieId))
-                {
-                    filtered_ratings.push_back(rating);
-                }
-            }
-
-            // Só adiciona se ainda tem avaliações suficientes após filtrar
-            if (filtered_ratings.size() > 50)
-            {
-                valid_users.emplace_back(user_pair.first, std::move(filtered_ratings));
-                users_with_valid_movies++;
+                valid_count++;
             }
         }
-    }
 
-    // Clear memory early
-    avaliacoes.clear();
-    movie_count.clear();
+        if (valid_count <= 50) continue;
 
-    // std::sort(valid_users.begin(), valid_users.end());
-
-    // Escrever resultados
-    char line_buffer[8192];
-
-    for (const auto &user_pair : valid_users)
-    {
-        const int userId = user_pair.first;
-        const std::vector<Rating> &ratings = user_pair.second;
-
-        // Construir linha completa
+        // Escreve diretamente
         char *buf_ptr = line_buffer;
         buf_ptr += sprintf(buf_ptr, "%d", userId);
 
         for (const auto &rating : ratings)
         {
-            buf_ptr += sprintf(buf_ptr, " %d:%.1f", rating.movieId, rating.rating);
+            if (valid_movies.count(rating.movieId))
+            {
+                buf_ptr += sprintf(buf_ptr, " %d:%.1f", rating.movieId, rating.rating);
 
-            // Proteger contra overflow
-            if (buf_ptr - line_buffer > 7800)
-                break;
+                // Proteção contra overflow
+                if (buf_ptr - line_buffer > 15000) break;
+            }
         }
 
         *buf_ptr++ = '\n';
         add_to_buffer(line_buffer, buf_ptr - line_buffer);
+        users_written++;
     }
 
     flush_buffer();
     fclose(output_file);
+
+    std::cout << "Pré-processamento concluído: " << users_written << " usuários escritos" << std::endl;
 
     return 0;
 }
