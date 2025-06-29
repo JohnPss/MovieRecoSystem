@@ -15,22 +15,20 @@ namespace Config
     const float MIN_SIMILARITY = 0.1f; // Similaridade mínima para considerar usuário
 
     // --- Parâmetros LSH ---
-    const int NUM_HASH_FUNCTIONS = 128; // Tamanho da Assinatura
+    const int NUM_HASH_FUNCTIONS = 160; // Tamanho da Assinatura
     const int NUM_BANDS = 32;           // Número de Provas por Gincana
-    const int ROWS_PER_BAND = 4;        // Rigidez de cada Prova
-    const int NUM_TABLES = 10;          // Número de Gincanas
+    const int ROWS_PER_BAND = 5;        // Rigidez de cada Prova
+    const int NUM_TABLES = 8;           // Número de Gincanas
     const uint32_t LARGE_PRIME = 4294967291u;
 
-    extern bool USE_LSH;
-
     // Parâmetros de performance
-    const int NUM_THREADS = std::thread::hardware_concurrency();
+    const int NUM_THREADS = std::thread::hardware_concurrency() - 2;
     const int BATCH_SIZE = 100;     // Tamanho do batch para processamento paralelo
-    const int MAX_CANDIDATES = 500; // Máximo de candidatos a processar
+    const int MAX_CANDIDATES = 300; // Máximo de candidatos a processar
 
     // Pesos do sistema híbrido
-    const float CF_WEIGHT = 0.7f; // Peso do collaborative filtering
-    const float CB_WEIGHT = 0.3f; // Peso do content-based filtering
+    const float CF_WEIGHT = 1.0f; // Peso do collaborative filtering
+    const float CB_WEIGHT = 1.0f; // Peso do content-based filtering
 
     // // Arquivos de entrada
     // const char *RATINGS_FILE = "datasets/input.dat";
@@ -40,6 +38,9 @@ namespace Config
     inline static const std::string USERS_FILE = "datasets/explore.dat";
     inline static const std::string MOVIES_FILE = "ml-25m/movies.csv";
     inline static const std::string RATINGS_FILE = "datasets/input.dat";
+    inline static const std::string OUTPUT_FILE = "outcome/output.dat";
+    inline static const std::string DEBUG_OUTPUT_FILE = "outcome/debug_recommendations.txt";
+
 }
 
 #endif // CONFIG_H

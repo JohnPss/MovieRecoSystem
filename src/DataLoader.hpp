@@ -6,6 +6,12 @@
 #include <vector>
 #include "DataStructures.hpp"
 
+// Para Memory-Mapped Files (Unix/Linux)
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 class DataLoader
 {
 private:

@@ -23,8 +23,7 @@ private:
     float globalAvgRating;
 
     SimilarityCalculator &similarityCalc;
-    LSHIndex& lshIndex;
-
+    LSHIndex &lshIndex;
 
 public:
     RecommendationEngine(
@@ -36,7 +35,7 @@ public:
         const std::unordered_map<uint32_t, int> &mp,
         float gar,
         SimilarityCalculator &sc,
-        LSHIndex& lshIndex);
+        LSHIndex &lshIndex);
 
     // Gera recomendações para um usuário
     std::vector<Recommendation> recommendForUser(uint32_t userId);
@@ -69,9 +68,9 @@ private:
         const std::unordered_set<uint32_t> &watchedMovies,
         std::unordered_map<uint32_t, float> &scores);
 
-        std::vector<std::pair<uint32_t, int>> findCandidateUsersLSH(
-            uint32_t userId,
-            const UserProfile &user);
+    std::vector<std::pair<uint32_t, int>> findCandidateUsersLSH(
+        uint32_t userId,
+        const UserProfile &user);
 };
 
 #endif // RECOMMENDATION_ENGINE_H

@@ -124,6 +124,10 @@ massif: release
 	valgrind --tool=massif --massif-out-file=massif.out ./$(BINDIR)/$(TARGET)
 	ms_print massif.out | less
 
+rmse-test: directories
+	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $(BINDIR)/rmse_test \
+	    $(SRCDIR)/RMSETest.cpp $(filter-out $(SRCDIR)/Main.cpp,$(SOURCES))
+
 # Ajuda
 help:
 	@echo "Comandos disponíveis:"

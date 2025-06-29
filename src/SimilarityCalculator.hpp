@@ -18,12 +18,6 @@ public:
     // Calcula similaridade de Pearson entre dois usuários
     float calculatePearsonCorrelation(uint32_t user1, uint32_t user2) const;
 
-    // Calcula similaridade de cosseno (alternativa)
-    float calculateCosineSimilarity(uint32_t user1, uint32_t user2) const;
-
-    // Limpa o cache
-    void clearCache();
-
 private:
     uint64_t makeKey(uint32_t user1, uint32_t user2) const;
 };
