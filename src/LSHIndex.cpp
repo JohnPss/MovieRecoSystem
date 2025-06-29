@@ -30,52 +30,61 @@ LSHIndex::LSHIndex() : rng(std::random_device{}())
 void LSHIndex::buildSignatures(
     const unordered_map<uint32_t, vector<pair<uint32_t, float>>> &userRatings,
     int numThreads)
- {
+{
     cout << "Construindo assinaturas MinHash para " << userRatings.size()
          << " usuários..." << endl;
     auto start = chrono::high_resolution_clock::now();
- 
+
     // Gera funções hash uma vez (compartilhadas entre threads)
     auto hashFunctions = generateHashFunctions();
- 
+
     // Pré-computa hashes para todos os filmes únicos
     unordered_set<uint32_t> allMovies;
-    for (const auto &[userId, ratings] : userRatings) {
-        for (const auto &[movieId, _] : ratings) {
+    for (const auto &[userId, ratings] : userRatings)
+    {
+        for (const auto &[movieId, _] : ratings)
+        {
             allMovies.insert(movieId);
         }
     }
- 
+
     cout << "Pré-computando hashes para " << allMovies.size() << " filmes..." << endl;
     unordered_map<uint32_t, vector<uint32_t>> precomputedHashes;
     precomputedHashes.reserve(allMovies.size());
-    
-    for (uint32_t movieId : allMovies) {
+
+    for (uint32_t movieId : allMovies)
+    {
         vector<uint32_t> hashes(Config::NUM_HASH_FUNCTIONS);
-        for (int h = 0; h < Config::NUM_HASH_FUNCTIONS; h++) {
-            hashes[h] = (hashFunctions[h].first * movieId + 
-                        hashFunctions[h].second) % Config::LARGE_PRIME;
+        for (int h = 0; h < Config::NUM_HASH_FUNCTIONS; h++)
+        {
+            hashes[h] = (hashFunctions[h].first * movieId +
+                         hashFunctions[h].second) %
+                        Config::LARGE_PRIME;
         }
         precomputedHashes[movieId] = move(hashes);
     }
- 
+
     // Converte para vector de pares para divisão mais eficiente
-    vector<pair<uint32_t, const vector<pair<uint32_t, float>>*>> userVector;
+    vector<pair<uint32_t, const vector<pair<uint32_t, float>> *>> userVector;
     userVector.reserve(userRatings.size());
-    for (const auto &[userId, ratings] : userRatings) {
+    for (const auto &[userId, ratings] : userRatings)
+    {
         userVector.emplace_back(userId, &ratings);
     }
- 
+
     // Processa em paralelo
     const size_t chunkSize = (userVector.size() + numThreads - 1) / numThreads;
     vector<future<vector<MinHashSignature>>> futures;
- 
-    for (int t = 0; t < numThreads; t++) {
+
+    for (int t = 0; t < numThreads; t++)
+    {
         size_t startIdx = t * chunkSize;
         size_t endIdx = min(startIdx + chunkSize, userVector.size());
- 
-        if (startIdx < userVector.size()) {
-            futures.push_back(async(launch::async, [&, startIdx, endIdx]() {
+
+        if (startIdx < userVector.size())
+        {
+            futures.push_back(async(launch::async, [&, startIdx, endIdx]()
+                                    {
                 vector<MinHashSignature> localSignatures;
                 localSignatures.reserve(endIdx - startIdx);
                 
@@ -101,26 +110,27 @@ void LSHIndex::buildSignatures(
                     
                     localSignatures.push_back(move(sig));
                 }
-                return localSignatures;
-            }));
+                return localSignatures; }));
         }
     }
- 
+
     // Coleta resultados
     {
         lock_guard<mutex> lock(indexMutex);
-        for (auto &future : futures) {
+        for (auto &future : futures)
+        {
             auto localSigs = future.get();
-            for (auto &sig : localSigs) {
+            for (auto &sig : localSigs)
+            {
                 signatures[sig.userId] = move(sig);
             }
         }
     }
- 
+
     auto end = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::milliseconds>(end - start);
     cout << "Assinaturas construídas em " << duration.count() << "ms" << endl;
- }
+}
 
 void LSHIndex::indexSignatures()
 {
@@ -157,7 +167,8 @@ void LSHIndex::indexSignatures()
             }
 
             // Adiciona ao bucket
-            tables[tableIdx][combinedHash].push_back(userId);
+            size_t finalHash = combinedHash % 20000; // ← ADICIONE ESTA LINHA
+            tables[tableIdx][finalHash].push_back(userId);
         }
     }
 
@@ -220,7 +231,8 @@ vector<uint32_t> LSHIndex::findSimilarCandidates(uint32_t userId, int maxCandida
         }
 
         // Busca o bucket
-        auto bucketIt = tables[tableIdx].find(combinedHash);
+        size_t finalHash = combinedHash % 20000;          // ← ADICIONE
+        auto bucketIt = tables[tableIdx].find(finalHash); // ← USE finalHash
         if (bucketIt != tables[tableIdx].end())
         {
             for (uint32_t candidateId : bucketIt->second)
@@ -254,7 +266,9 @@ vector<uint32_t> LSHIndex::findSimilarCandidates(uint32_t userId, int maxCandida
                     combinedHash = (combinedHash << 16) ^ bandHash;
                 }
 
-                auto bucketIt = tables[tableIdx].find(combinedHash);
+                size_t finalHash = combinedHash % 20000;
+                auto bucketIt = tables[tableIdx].find(finalHash);
+
                 if (bucketIt != tables[tableIdx].end())
                 {
                     for (uint32_t candidateId : bucketIt->second)
@@ -333,10 +347,10 @@ size_t LSHIndex::hashBand(const MinHashSignature &sig, int bandIdx, int tableIdx
         uint64_t temp = (uint64_t)bandHashParams[tableIdx][bandIdx].a * val +
                         bandHashParams[tableIdx][bandIdx].b;
         // Reduz o espaço de hash para criar mais colisões (buckets maiores)
-        hash = (hash * 37 + (temp % 1000000)) % Config::LARGE_PRIME;
+        hash = (hash * 37 + (temp % 20000)) % Config::LARGE_PRIME;
     }
 
-    return hash % 1000000; // Limita o espaço de hash para garantir buckets maiores
+    return hash % 20000; // Limita o espaço de hash para garantir buckets maiores
 }
 
 vector<pair<uint32_t, uint32_t>> LSHIndex::generateHashFunctions()
