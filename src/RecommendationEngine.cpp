@@ -6,6 +6,7 @@
 
 using namespace std;
 
+// O construtor e outras funções permanecem os mesmos...
 RecommendationEngine::RecommendationEngine(
     const unordered_map<uint32_t, UserProfile> &u,
     const unordered_map<uint32_t, Movie> &m,
@@ -29,43 +30,24 @@ vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
 
     const UserProfile &user = it->second;
 
-    // Obtém filmes já assistidos
     unordered_set<uint32_t> watchedMovies;
     for (const auto &[movieId, _] : user.ratings)
     {
         watchedMovies.insert(movieId);
     }
 
-    // 1. Encontra candidatos similares
-    // 1. Encontra candidatos similares (PONTO DA OTIMIZAÇÃO)
-    vector<pair<uint32_t, int>> candidates;
-    if (Config::USE_LSH)
-    {
-        // NOVO: Chama a versão rápida com LSH
-        candidates = findCandidateUsersLSH(userId, user);
-    }
-    else
-    {
-        // Mantém o método antigo como fallback
-        candidates = findCandidateUsers(userId, user);
-    }
+    // *** MUDANÇA: O 'if/else' foi removido. Agora sempre usa LSH. ***
+    vector<pair<uint32_t, int>> candidates = findCandidateUsersLSH(userId, user);
 
-    // 2. Calcula similaridades
     auto similarUsers = calculateSimilarities(userId, candidates);
-
-    // 3. Collaborative filtering
     auto scores = collaborativeFiltering(user, similarUsers, watchedMovies);
-
-    // 4. Content-based boost
     contentBasedBoost(user, watchedMovies, scores);
 
-    // 5. Popularity fallback
     if (scores.size() < Config::TOP_K)
     {
         popularityFallback(watchedMovies, scores);
     }
 
-    // Converte para vetor e ordena
     vector<Recommendation> recommendations;
     recommendations.reserve(scores.size());
 
@@ -86,12 +68,12 @@ vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
     return recommendations;
 }
 
+// ... as funções findCandidateUsers, calculateSimilarities, etc. permanecem as mesmas ...
 vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsers(
     uint32_t userId,
     const UserProfile &user)
 {
     unordered_map<uint32_t, int> candidateCount;
-
     for (const auto &[movieId, _] : user.ratings)
     {
         auto it = movieToUsers.find(movieId);
@@ -107,7 +89,6 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsers(
         }
     }
 
-    // Filtra candidatos com pelo menos MIN_COMMON_ITEMS filmes em comum
     vector<pair<uint32_t, int>> filteredCandidates;
     for (const auto &[candidateId, count] : candidateCount)
     {
@@ -117,7 +98,6 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsers(
         }
     }
 
-    // Ordena por número de filmes em comum
     sort(filteredCandidates.begin(), filteredCandidates.end(),
          [](const auto &a, const auto &b)
          { return a.second > b.second; });
@@ -135,14 +115,10 @@ vector<pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(
     const vector<pair<uint32_t, int>> &candidates)
 {
     vector<pair<uint32_t, float>> similarUsers;
-
-    // Processa em batches para paralelização controlada
     for (size_t i = 0; i < candidates.size(); i += Config::BATCH_SIZE)
     {
         size_t end = min(i + Config::BATCH_SIZE, candidates.size());
         vector<future<pair<uint32_t, float>>> futures;
-
-        // Processa batch em paralelo
         for (size_t j = i; j < end; ++j)
         {
             uint32_t candidateId = candidates[j].first;
@@ -153,8 +129,6 @@ vector<pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(
                                         return make_pair(candidateId, sim);
                                     }));
         }
-
-        // Coleta resultados
         for (auto &f : futures)
         {
             auto result = f.get();
@@ -165,7 +139,6 @@ vector<pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(
         }
     }
 
-    // Ordena por similaridade
     sort(similarUsers.begin(), similarUsers.end(),
          [](const auto &a, const auto &b)
          { return a.second > b.second; });
@@ -174,7 +147,6 @@ vector<pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(
     {
         similarUsers.resize(Config::MAX_SIMILAR_USERS);
     }
-
     return similarUsers;
 }
 
@@ -186,7 +158,6 @@ unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(
     (void)user;
     unordered_map<uint32_t, float> scores;
     float totalSim = 0;
-
     for (const auto &[simUserId, similarity] : similarUsers)
     {
         totalSim += similarity;
@@ -196,7 +167,6 @@ unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(
 
         const auto &simUserRatings = it->second.ratings;
         float simUserAvg = it->second.avgRating;
-
         for (const auto &[movieId, rating] : simUserRatings)
         {
             if (watchedMovies.find(movieId) == watchedMovies.end())
@@ -206,7 +176,6 @@ unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(
         }
     }
 
-    // Normaliza e adiciona baseline
     if (totalSim > 0)
     {
         for (auto &[movieId, score] : scores)
@@ -219,7 +188,6 @@ unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(
             }
         }
     }
-
     return scores;
 }
 
@@ -244,7 +212,6 @@ void RecommendationEngine::contentBasedBoost(
                     {
                         auto avgIt = movieAvgRatings.find(movieId);
                         auto popIt = moviePopularity.find(movieId);
-
                         if (avgIt != movieAvgRatings.end() && popIt != moviePopularity.end())
                         {
                             float boost = 0.5f * (avgIt->second / 5.0f) +
@@ -263,7 +230,6 @@ void RecommendationEngine::popularityFallback(
     unordered_map<uint32_t, float> &scores)
 {
     vector<pair<uint32_t, float>> popularMovies;
-
     for (const auto &[movieId, popularity] : moviePopularity)
     {
         if (watchedMovies.find(movieId) == watchedMovies.end())
@@ -290,19 +256,18 @@ void RecommendationEngine::popularityFallback(
     }
 }
 
-// FUNÇÃO TOTALMENTE NOVA: Busca candidatos usando o índice LSH
+// *** MUDANÇA: Função com o novo fallback leve e eficiente ***
 vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
     uint32_t userId,
     const UserProfile &user)
 {
+    // 1. Pega um número maior de candidatos potenciais do LSH para ter material para o fallback.
+    vector<uint32_t> lshCandidates = lshIndex.findSimilarCandidates(userId, Config::MAX_CANDIDATES * 3);
 
-    // Obtém candidatos do LSH
-    vector<uint32_t> lshCandidates = lshIndex.findSimilarCandidates(userId, Config::MAX_CANDIDATES * 2);
-
-    // IMPORTANTE: Precisamos calcular quantos filmes em comum cada candidato tem
-    // Isso é CRÍTICO para o algoritmo funcionar corretamente
-    vector<pair<uint32_t, int>> candidatesWithCount;
-    candidatesWithCount.reserve(lshCandidates.size());
+    // 2. Calcula filmes em comum para TODOS os candidatos retornados pelo LSH.
+    //    Esta lista armazena todos os candidatos, mesmo os de "baixa qualidade".
+    vector<pair<uint32_t, int>> allFoundCandidates;
+    allFoundCandidates.reserve(lshCandidates.size());
 
     for (uint32_t candidateId : lshCandidates)
     {
@@ -311,20 +276,14 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
             continue;
 
         const auto &candidateRatings = it->second.ratings;
-
-        // Conta filmes em comum usando merge (arrays ordenados)
         int commonCount = 0;
         size_t i = 0, j = 0;
         while (i < user.ratings.size() && j < candidateRatings.size())
         {
             if (user.ratings[i].first < candidateRatings[j].first)
-            {
                 i++;
-            }
             else if (user.ratings[i].first > candidateRatings[j].first)
-            {
                 j++;
-            }
             else
             {
                 commonCount++;
@@ -332,117 +291,68 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
                 j++;
             }
         }
-
-        // Só adiciona se tem filmes suficientes em comum
-        if (commonCount >= Config::MIN_COMMON_ITEMS)
+        // Adiciona todos que tiverem pelo menos 1 filme em comum
+        if (commonCount > 0)
         {
-            candidatesWithCount.push_back({candidateId, commonCount});
+            allFoundCandidates.push_back({candidateId, commonCount});
         }
     }
 
-    // CRÍTICO: Ordena por número de filmes em comum (não por ID!)
-    sort(candidatesWithCount.begin(), candidatesWithCount.end(),
+    // 3. Cria a lista principal apenas com candidatos de ALTA qualidade.
+    vector<pair<uint32_t, int>> highQualityCandidates;
+    for (const auto &candidate : allFoundCandidates)
+    {
+        if (candidate.second >= Config::MIN_COMMON_ITEMS)
+        {
+            highQualityCandidates.push_back(candidate);
+        }
+    }
+
+    // 4. Ordena a lista de alta qualidade por número de filmes em comum.
+    sort(highQualityCandidates.begin(), highQualityCandidates.end(),
          [](const auto &a, const auto &b)
          { return a.second > b.second; });
 
-    // Se temos poucos candidatos após filtrar, busca mais via força bruta parcial
-    if (candidatesWithCount.size() < 20)
+    // 5. *** O NOVO FALLBACK LEVE ***
+    // Se, após o filtro rigoroso, tivermos muito poucos candidatos,
+    // preenchemos a lista com os melhores candidatos de "qualidade média".
+    const size_t MINIMUM_CANDIDATES = 20;
+    if (highQualityCandidates.size() < MINIMUM_CANDIDATES)
     {
-        // Fallback: busca nos filmes mais populares do usuário
-        unordered_map<uint32_t, int> additionalCandidates;
+        // Ordena a lista *completa* para encontrar os melhores entre os que sobraram.
+        sort(allFoundCandidates.begin(), allFoundCandidates.end(),
+             [](const auto &a, const auto &b)
+             { return a.second > b.second; });
 
-        // Pega os 10 filmes mais bem avaliados do usuário
-        vector<pair<float, uint32_t>> topRatedMovies;
-        for (const auto &[movieId, rating] : user.ratings)
+        // Adiciona os melhores candidatos da lista completa (que ainda não estão na lista final)
+        // até atingir o mínimo desejado.
+        for (const auto &fallbackCandidate : allFoundCandidates)
         {
-            if (rating >= 4.0f)
-            {
-                topRatedMovies.push_back({rating, movieId});
-            }
-        }
-        sort(topRatedMovies.begin(), topRatedMovies.end(), greater<pair<float, uint32_t>>());
-
-        // Para cada filme top, adiciona alguns usuários que também gostaram
-        int moviesChecked = 0;
-        for (const auto &[rating, movieId] : topRatedMovies)
-        {
-            if (moviesChecked++ >= 10)
+            if (highQualityCandidates.size() >= MINIMUM_CANDIDATES)
                 break;
 
-            auto movieIt = movieToUsers.find(movieId);
-            if (movieIt != movieToUsers.end())
+            bool already_included = false;
+            for (const auto &hq_cand : highQualityCandidates)
             {
-                // Pega usuários que deram nota alta para este filme
-                for (const auto &[otherUser, otherRating] : movieIt->second)
+                if (hq_cand.first == fallbackCandidate.first)
                 {
-                    if (otherUser != userId && otherRating >= 4.0f)
-                    {
-                        additionalCandidates[otherUser]++;
-                    }
-                }
-            }
-        }
-
-        // Adiciona candidatos adicionais que não estavam no LSH
-        for (const auto &[candidateId, sharedHighRated] : additionalCandidates)
-        {
-            // Verifica se já não está na lista
-            bool alreadyIncluded = false;
-            for (const auto &[existingId, _] : candidatesWithCount)
-            {
-                if (existingId == candidateId)
-                {
-                    alreadyIncluded = true;
+                    already_included = true;
                     break;
                 }
             }
 
-            if (!alreadyIncluded && sharedHighRated >= 3)
+            if (!already_included)
             {
-                // Conta filmes em comum
-                auto it = users.find(candidateId);
-                if (it != users.end())
-                {
-                    const auto &candidateRatings = it->second.ratings;
-                    int commonCount = 0;
-                    size_t i = 0, j = 0;
-                    while (i < user.ratings.size() && j < candidateRatings.size())
-                    {
-                        if (user.ratings[i].first < candidateRatings[j].first)
-                        {
-                            i++;
-                        }
-                        else if (user.ratings[i].first > candidateRatings[j].first)
-                        {
-                            j++;
-                        }
-                        else
-                        {
-                            commonCount++;
-                            i++;
-                            j++;
-                        }
-                    }
-
-                    if (commonCount >= Config::MIN_COMMON_ITEMS)
-                    {
-                        candidatesWithCount.push_back({candidateId, commonCount});
-                    }
-                }
+                highQualityCandidates.push_back(fallbackCandidate);
             }
         }
-
-        // Re-ordena com os novos candidatos
-        sort(candidatesWithCount.begin(), candidatesWithCount.end(),
-             [](const auto &a, const auto &b)
-             { return a.second > b.second; });
     }
 
-    // Limita ao máximo configurado
-    if (candidatesWithCount.size() > Config::MAX_SIMILAR_USERS)
+    // 6. Limita ao máximo de candidatos configurado.
+    if (highQualityCandidates.size() > Config::MAX_CANDIDATES)
     {
-        candidatesWithCount.resize(Config::MAX_SIMILAR_USERS);
+        highQualityCandidates.resize(Config::MAX_CANDIDATES);
     }
 
-    return candidatesWithCount;
+    return highQualityCandidates;
 }

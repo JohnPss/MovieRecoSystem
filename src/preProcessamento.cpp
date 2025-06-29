@@ -87,7 +87,7 @@ void process_chunk(DataChunk *chunk)
 
     // OTIMIZAÇÃO: Reservas mais realistas
     chunk->local_user_data.reserve(50000);   // Aumentado
-    chunk->local_movie_count.reserve(60000);  // Ajustado
+    chunk->local_movie_count.reserve(60000); // Ajustado
 
     while (current_pos < end_pos)
     {
@@ -176,7 +176,7 @@ int process_ratings_file()
         close(fd);
         return 1;
     }
-    
+
     // OTIMIZAÇÃO: Advise ao kernel sobre padrão de acesso
     madvise(file_data, sb.st_size, MADV_SEQUENTIAL);
     close(fd);
@@ -219,8 +219,8 @@ int process_ratings_file()
     std::unordered_map<int, int> movie_count;
 
     // OTIMIZAÇÃO: Reservas mais precisas
-    avaliacoes.reserve(300000);   // MovieLens tem ~280k usuários
-    movie_count.reserve(60000);    // ~60k filmes
+    avaliacoes.reserve(300000); // MovieLens tem ~280k usuários
+    movie_count.reserve(60000); // ~60k filmes
 
     for (const auto &chunk : chunks)
     {
@@ -243,7 +243,7 @@ int process_ratings_file()
 
     // --- Filtrar filmes com mais de 50 avaliações ---
     std::unordered_set<int> valid_movies;
-    valid_movies.reserve(20000);  // ~20k filmes passam o filtro
+    valid_movies.reserve(20000); // ~20k filmes passam o filtro
 
     for (const auto &movie_pair : movie_count)
     {
@@ -291,12 +291,13 @@ int process_ratings_file()
     };
 
     // OTIMIZAÇÃO PRINCIPAL: Escreve diretamente sem criar estrutura intermediária
-    char line_buffer[16384];  // Buffer maior
+    char line_buffer[16384]; // Buffer maior
     int users_written = 0;
 
     for (const auto &[userId, ratings] : avaliacoes)
     {
-        if (ratings.size() <= 50) continue;
+        if (ratings.size() <= 50)
+            continue;
 
         // Conta ratings válidos on-the-fly
         int valid_count = 0;
@@ -308,7 +309,8 @@ int process_ratings_file()
             }
         }
 
-        if (valid_count <= 50) continue;
+        if (valid_count <= 50)
+            continue;
 
         // Escreve diretamente
         char *buf_ptr = line_buffer;
@@ -321,7 +323,8 @@ int process_ratings_file()
                 buf_ptr += sprintf(buf_ptr, " %d:%.1f", rating.movieId, rating.rating);
 
                 // Proteção contra overflow
-                if (buf_ptr - line_buffer > 15000) break;
+                if (buf_ptr - line_buffer > 15000)
+                    break;
             }
         }
 
