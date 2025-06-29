@@ -188,6 +188,18 @@ unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(
             }
         }
     }
+
+    for (auto &[movieId, score] : scores)
+    {
+        auto popIt = moviePopularity.find(movieId);
+        if (popIt != moviePopularity.end())
+        {
+            // Boost baseado na popularidade (log-normalizado)
+            float popularity_boost = log(popIt->second + 1) / 15.0f; // Normaliza
+            score += popularity_boost * Config::POPULARITY_WEIGHT;
+        }
+    }
+
     return scores;
 }
 
@@ -214,9 +226,15 @@ void RecommendationEngine::contentBasedBoost(
                         auto popIt = moviePopularity.find(movieId);
                         if (avgIt != movieAvgRatings.end() && popIt != moviePopularity.end())
                         {
-                            float boost = 0.5f * (avgIt->second / 5.0f) +
-                                          0.5f * min(1.0f, static_cast<float>(log(popIt->second + 1) / 10.0));
-                            scores[movieId] += boost * Config::CB_WEIGHT;
+                            // *** MODIFICADO: Inclui POPULARITY_WEIGHT ***
+                            float quality = avgIt->second / 5.0f;
+                            float popularity = min(1.0f, static_cast<float>(log(popIt->second + 1) / 10.0));
+
+                            // NOVO: Boost combinado com peso de popularidade
+                            float combined_boost = (0.3f * quality + 0.7f * popularity) * Config::CB_WEIGHT +
+                                                   popularity * Config::POPULARITY_WEIGHT;
+
+                            scores[movieId] += combined_boost;
                         }
                     }
                 }
@@ -237,7 +255,8 @@ void RecommendationEngine::popularityFallback(
             auto it = movieAvgRatings.find(movieId);
             if (it != movieAvgRatings.end() && it->second >= Config::MIN_RATING)
             {
-                popularMovies.push_back({movieId, popularity * it->second});
+                float weighted_score = popularity * it->second * Config::POPULARITY_WEIGHT;
+                popularMovies.push_back({movieId, weighted_score});
             }
         }
     }
@@ -251,7 +270,7 @@ void RecommendationEngine::popularityFallback(
     {
         if (scores.find(popularMovies[i].first) == scores.end())
         {
-            scores[popularMovies[i].first] = popularMovies[i].second / 100.0f;
+            scores[popularMovies[i].first] = popularMovies[i].second / 50.0f; // Era /100.0f
         }
     }
 }

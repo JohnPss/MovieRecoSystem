@@ -27,8 +27,9 @@ namespace Config
     const int BATCH_SIZE = 100; // Tamanho do batch para processamento paralelo
 
     // Pesos do sistema híbrido OTIMIZADOS
-    const float CF_WEIGHT = 0.8f; // MUDANÇA: Reduzido (CF está falhando)
-    const float CB_WEIGHT = 3.0f; // MUDANÇA: CB muito mais forte para compensar
+    const float CF_WEIGHT = 1.0f;         // MUDANÇA: Reduzido (CF está falhando)
+    const float CB_WEIGHT = 1.0f;         // MUDANÇA: CB muito mais forte para compensar
+    const float POPULARITY_WEIGHT = 3.0f; // ← NOVO!
 
     // NOVAS CONFIGURAÇÕES DE FALLBACK
     const int MIN_CANDIDATES_FOR_CF = 50;        // Se < 50 candidatos, força fallback
