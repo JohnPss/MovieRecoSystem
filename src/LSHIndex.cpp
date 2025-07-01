@@ -167,7 +167,7 @@ void LSHIndex::indexSignatures()
             }
 
             // Adiciona ao bucket
-            size_t finalHash = combinedHash % 20000; // ← ADICIONE ESTA LINHA
+            size_t finalHash = combinedHash % 5000; // ← ADICIONE ESTA LINHA
             tables[tableIdx][finalHash].push_back(userId);
         }
     }
