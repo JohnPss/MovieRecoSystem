@@ -1,12 +1,7 @@
 # 🎬 Sistema de Recomendação MovieLens
 
 ## 📋 Índice
-1. [Visão Geral](#visão-geral)
-2. [Fase 1: Carregamento e Pré-processamento](#fase-1-carregamento-e-pré-processamento)
-3. [Fase 2: Geração de Recomendações](#fase-2-geração-de-recomendações)
-4. [Análise de Complexidade e Performance](#análise-de-complexidade-e-performance)
-5. [Validação e Qualidade](#validação-e-qualidade)
-6. [Exemplos Práticos Completos](#exemplos-práticos-completos)
+
 
 ---
 
