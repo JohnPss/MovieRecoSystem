@@ -36,7 +36,6 @@ vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
         watchedMovies.insert(movieId);
     }
 
-    // *** MUDANÇA: O 'if/else' foi removido. Agora sempre usa LSH. ***
     vector<pair<uint32_t, int>> candidates = findCandidateUsersLSH(userId, user);
 
     auto similarUsers = calculateSimilarities(userId, candidates);
@@ -125,7 +124,8 @@ vector<pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(
             futures.push_back(async(launch::async,
                                     [this, userId, candidateId]()
                                     {
-                                        float sim = similarityCalc.calculatePearsonCorrelation(userId, candidateId);
+                                        // *** MUDANÇA: Aqui chamamos calculateCosineSimilarity ao invés de calculatePearsonCorrelation ***
+                                        float sim = similarityCalc.calculateCosineSimilarity(userId, candidateId);
                                         return make_pair(candidateId, sim);
                                     }));
         }

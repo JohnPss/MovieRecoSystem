@@ -9,53 +9,13 @@
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include <charconv> // Para std::from_chars (C++17)
 
 using namespace std;
 using namespace chrono;
 
-// --- Funções Auxiliares de Parsing (para operar em char*) ---
-namespace
-{
-    inline bool is_digit(char c)
-    {
-        return c >= '0' && c <= '9';
-    }
-
-    // Função de parsing rápida e segura para uint32_t a partir de um buffer de char
-    inline uint32_t fast_str_to_u32(char *&p, char *end)
-    {
-        uint32_t val = 0;
-        while (p < end && is_digit(*p))
-        {
-            val = val * 10 + (*p - '0');
-            p++;
-        }
-        return val;
-    }
-
-    // Função de parsing rápida e segura para float a partir de um buffer de char
-    inline float fast_str_to_float(char *&p, char *end)
-    {
-        float val = 0.0f;
-        while (p < end && is_digit(*p))
-        {
-            val = val * 10.0f + (*p - '0');
-            p++;
-        }
-        if (p < end && *p == '.')
-        {
-            p++;
-            float dec = 0.1f;
-            while (p < end && is_digit(*p))
-            {
-                val += (*p - '0') * dec;
-                dec *= 0.1f;
-                p++;
-            }
-        }
-        return val;
-    }
-}
+// --- Funções Auxiliares de Parsing (NÃO MAIS USADAS, MANTIDAS PARA REFERÊNCIA) ---
+// As funções manuais foram substituídas por std::from_chars para máxima performance.
 
 DataLoader::DataLoader(
     unordered_map<uint32_t, UserProfile> &u,
@@ -71,7 +31,7 @@ DataLoader::DataLoader(
 
 void DataLoader::loadRatings(const string &filename)
 {
-    cout << "Carregando ratings usando mmap..." << endl;
+    cout << "Carregando ratings usando mmap e std::from_chars..." << endl;
     auto start = high_resolution_clock::now();
 
     int fd = open(filename.c_str(), O_RDONLY);
@@ -103,7 +63,8 @@ void DataLoader::loadRatings(const string &filename)
     int num_threads = min((int)thread::hardware_concurrency(), max(1, (int)(sb.st_size / 5000000)));
     cout << "Usando " << num_threads << " threads para processar " << sb.st_size / (1024 * 1024) << " MB de dados" << endl;
 
-    struct ThreadData
+    // OTIMIZAÇÃO: Alinha a estrutura de dados da thread para evitar "false sharing"
+    struct alignas(64) ThreadData
     {
         unordered_map<uint32_t, UserProfile> users;
         unordered_map<uint32_t, vector<pair<uint32_t, float>>> movieToUsers;
@@ -134,25 +95,42 @@ void DataLoader::loadRatings(const string &filename)
         threads.emplace_back([&, chunk_start, chunk_end, t]()
                              {
             auto &data = threadData[t];
-            char *p = chunk_start;
+            // CORREÇÃO: O ponteiro 'p' agora é const, pois apenas lemos do buffer.
+            const char *p = chunk_start;
 
             while (p < chunk_end) {
                 while (p < chunk_end && (*p == '\n' || *p == '\r')) p++;
                 if (p >= chunk_end) break;
 
-                uint32_t userId = fast_str_to_u32(p, chunk_end);
+                // OTIMIZAÇÃO: Usa std::from_chars para parsing de inteiros
+                uint32_t userId;
+                auto [p1, ec1] = from_chars(p, chunk_end, userId);
+                if (ec1 != errc()) { p++; continue; }
+                p = p1; // Agora a atribuição é válida (const char* = const char*)
+
                 while (p < chunk_end && (*p == ' ' || *p == '\t')) p++;
 
                 UserProfile &user = data.users[userId];
-                user.ratings.clear(); // <<<<<<< CORREÇÃO CRÍTICA
+                user.ratings.clear(); 
                 
                 float sumRatings = 0.0f;
                 int ratings_in_line = 0;
 
                 while (p < chunk_end && *p != '\n' && *p != '\r') {
-                    uint32_t movieId = fast_str_to_u32(p, chunk_end);
+                    // OTIMIZAÇÃO: Usa std::from_chars para parsing de inteiros
+                    uint32_t movieId;
+                    auto [p2, ec2] = from_chars(p, chunk_end, movieId);
+                    if (ec2 != errc()) { p++; continue; }
+                    p = p2; // Válido
+
                     p++; // Pula ':'
-                    float rating = fast_str_to_float(p, chunk_end);
+
+                    // OTIMIZAÇÃO: Usa std::from_chars para parsing de floats
+                    float rating;
+                    auto [p3, ec3] = from_chars(p, chunk_end, rating);
+                    if (ec3 != errc()) { p++; continue; }
+                    p = p3; // Válido
+
                     while (p < chunk_end && (*p == ' ' || *p == '\t')) p++;
 
                     user.ratings.emplace_back(movieId, rating);
@@ -165,9 +143,9 @@ void DataLoader::loadRatings(const string &filename)
                 }
                 
                 if (ratings_in_line > 0) {
-                    data.ratingSum += sumRatings; // <<<<<<< CORREÇÃO
-                    data.ratingCount += ratings_in_line; // <<<<<<< CORREÇÃO
-                    user.avgRating = sumRatings / ratings_in_line; // <<<<<<< CORREÇÃO
+                    data.ratingSum += sumRatings;
+                    data.ratingCount += ratings_in_line;
+                    user.avgRating = sumRatings / ratings_in_line;
                     sort(user.ratings.begin(), user.ratings.end());
                 }
                 while (p < chunk_end && (*p == '\n' || *p == '\r')) p++;
@@ -181,6 +159,7 @@ void DataLoader::loadRatings(const string &filename)
 
     munmap(file_data, sb.st_size);
 
+    // O merge dos resultados permanece o mesmo
     uint64_t totalRatings = 0;
     double totalSum = 0.0;
 
@@ -225,7 +204,7 @@ void DataLoader::loadRatings(const string &filename)
     cout << "Usuários: " << users.size() << ", Ratings: " << totalRatings << endl;
 }
 
-// As funções abaixo permanecem inalteradas
+// As funções loadMovies, calculateUserPreferences e loadUsersToRecommend permanecem inalteradas
 void DataLoader::loadMovies(const string &filename)
 {
     cout << "Carregando filmes..." << endl;
@@ -312,7 +291,14 @@ void DataLoader::calculateUserPreferences()
                 }
             }
 
-            vector<pair<int, float>> sortedGenres(genreScores.begin(), genreScores.end());
+            // CORREÇÃO: Constrói o vetor explicitamente para evitar problemas de compilação.
+            vector<pair<int, float>> sortedGenres;
+            sortedGenres.reserve(genreScores.size());
+            for (const auto &p : genreScores)
+            {
+                sortedGenres.push_back(p);
+            }
+
             sort(sortedGenres.begin(), sortedGenres.end(),
                  [](const auto &a, const auto &b)
                  { return a.second > b.second; });

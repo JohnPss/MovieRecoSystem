@@ -13,7 +13,7 @@ uint64_t SimilarityCalculator::makeKey(uint32_t user1, uint32_t user2) const
     return ((uint64_t)min(user1, user2) << 32) | max(user1, user2);
 }
 
-float SimilarityCalculator::calculatePearsonCorrelation(uint32_t user1, uint32_t user2) const
+float SimilarityCalculator::calculateCosineSimilarity(uint32_t user1, uint32_t user2) const
 {
     // Verifica cache
     uint64_t key = makeKey(user1, user2);
@@ -39,8 +39,9 @@ float SimilarityCalculator::calculatePearsonCorrelation(uint32_t user1, uint32_t
         return 0.0f;
     }
 
-    float sum1 = 0, sum2 = 0, sum1Sq = 0, sum2Sq = 0, pSum = 0;
-    int n = 0;
+    float dotProduct = 0.0f;
+    float normA = 0.0f, normB = 0.0f;
+    int commonItems = 0;
 
     // Encontra filmes em comum usando merge (arrays ordenados)
     size_t i = 0, j = 0;
@@ -58,24 +59,24 @@ float SimilarityCalculator::calculatePearsonCorrelation(uint32_t user1, uint32_t
         {
             float r1 = ratings1[i].second;
             float r2 = ratings2[j].second;
-            sum1 += r1;
-            sum2 += r2;
-            sum1Sq += r1 * r1;
-            sum2Sq += r2 * r2;
-            pSum += r1 * r2;
-            n++;
+
+            // Cosine similarity calculation
+            dotProduct += r1 * r2;
+            normA += r1 * r1;
+            normB += r2 * r2;
+            commonItems++;
+
             i++;
             j++;
         }
     }
 
-    if (n < Config::MIN_COMMON_ITEMS)
+    if (commonItems < Config::MIN_COMMON_ITEMS)
         return 0.0f;
 
-    float num = pSum - (sum1 * sum2 / n);
-    float den = sqrt((sum1Sq - sum1 * sum1 / n) * (sum2Sq - sum2 * sum2 / n));
-
-    float similarity = (den == 0) ? 0 : num / den;
+    // Calcula a similaridade do cosseno
+    float denominator = sqrt(normA) * sqrt(normB);
+    float similarity = (denominator == 0.0f) ? 0.0f : dotProduct / denominator;
 
     // Armazena no cache
     {
