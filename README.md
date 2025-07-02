@@ -57,7 +57,7 @@ Lógica para lidar com registros duplicados ou inválidos.
 ## Estrutura de Diretórios
 
 A seguir, a estrutura do diretório do projeto:
-
+```
 .
 ├── Makefile
 ├── README.md
@@ -85,7 +85,7 @@ A seguir, a estrutura do diretório do projeto:
     ├── SimilarityCalculator.cpp  
     └── SimilarityCalculator.hpp
 
-
+```
 - `.`: Diretório raiz do projeto.
 
 - `Makefile`: Script para compilação e execução do projeto.
@@ -132,21 +132,20 @@ A seguir, a estrutura do diretório do projeto:
 
 Para garantir a correta compilação e execução do projeto, certifique-se de que o ambiente de desenvolvimento esteja configurado com as seguintes especificações:
 
-    - Sistema Operacional: Linux Ubuntu 24.04 LTS.
+- Sistema Operacional: Linux Ubuntu 24.04 LTS.
  
-    - Compilador: GCC versão 13 ou superior (g++ para C++). Certifique que esta com a versão atualizada do compilador:
+- Compilador: GCC versão 13 ou superior (g++ para C++). Certifique que esta com a versão atualizada do compilador:
 
     ``` bash
     g++ --version
     ```
-    Caso precise instalar ou atualizar o compilador e as ferramentas de build essenciais no Ubuntu, utilize os seguintes comandos:
+Caso precise instalar ou atualizar o compilador e as ferramentas de build essenciais no Ubuntu, utilize os seguintes comandos:
         
     ``` bash
     sudo apt update
     sudo apt install build-essential g++
     ```
-
-    - Biblioteca Padrão: O projeto utiliza exclusivamente a biblioteca padrão da linguagem C++. Não há dependências de bibliotecas de terceiros externas.
+- Biblioteca Padrão: O projeto utiliza exclusivamente a biblioteca padrão da linguagem C++. Não há dependências de bibliotecas de terceiros externas.
 
 ## Como Compilar e Executar
 
@@ -156,7 +155,7 @@ Este projeto utiliza um `Makefile` para simplificar e padronizar os processos de
 
 Antes de compilar e executar o sistema, certifique-se de que os seguintes pré-requisitos estejam atendidos:
 
-- Base de Dados MovieLens 25M: Os arquivos brutos da base de dados, especialmente o `ratings.csv`, devem estar localizados no diretório `ml-25m/`. Caso ainda não os tenha, faça o download manual da base de dados MovieLens 25M através do repositório Kaggle, disponível em: [MovieLens 25M Dataset](https://grouplens.org/datasets/movielens/25m/).
+- Base de Dados MovieLens 25M: Os arquivos brutos da base de dados, especialmente o `ratings.csv`, devem estar localizados no diretório `ml-25m/`. Caso ainda não os tenha, faça o download manual da base de dados MovieLens 25M através do repositório Kaggle, disponível em: [MovieLens 25M Dataset](https://www.kaggle.com/datasets/garymk/movielens-25m-dataset).
 
 - Arquivo de Usuários para Exploração (`explore.dat`): Este arquivo deve ser criado manualmente por você e colocado no diretório `datasets`. Ele contém a lista de `usuario_ids` para os quais o sistema irá gerar recomendações personalizadas.
 
@@ -202,7 +201,7 @@ Esta seção detalha como os dados são obtidos, pré-processados e os formatos 
 
 ### Download da Base de Dados MovieLens 25M
 A base de dados fundamental para este projeto é a MovieLens 25M. É essencial que o arquivo `ratings.csv` seja utilizado, e outros arquivos como `movies.csv` podem ser explorados para enriquecer o processo de pré-processamento.  
-- Local de Download: A base de dados pode ser baixada manualmente através do repositório Kaggle, disponível em:[MovieLens 25M Dataset](https://grouplens.org/datasets/movielens/25m/)   
+- Local de Download: A base de dados pode ser baixada manualmente através do repositório Kaggle, disponível em:[MovieLens 25M Dataset](https://www.kaggle.com/datasets/garymk/movielens-25m-dataset)   
 - Localização no Projeto: Após o download e descompactação, os arquivos originais (ex: `ratings.csv`, `movies.csv`) devem ser colocados no diretório `ml-25m/` do projeto.
 ### Pré-processamento
 O módulo de pré-processamento do sistema (`preProcessament.cpp/.hpp`) é responsável por transformar os dados brutos da MovieLens 25M em um formato otimizado para o algoritmo de recomendação. Este processo é executado automaticamente pelo programa. Os critérios de filtragem são:
@@ -222,7 +221,7 @@ Exemplo:
 ```
 Cada linha representa um `usuario_id` seguido de suas respectivas avaliações, onde `item_id` é o identificador do filme e `nota` é a avaliação do usuário para aquele filme.
 
-###Formato dos Arquivos de Entrada e Saída
+### Formato dos Arquivos de Entrada e Saída
 
 Os arquivos utilizados pelo sistema seguem padrões específicos para garantir compatibilidade e processamento correto:
 
