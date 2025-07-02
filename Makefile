@@ -128,17 +128,3 @@ rmse-test: directories
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -o $(BINDIR)/rmse_test \
 	    $(SRCDIR)/RMSETest.cpp $(filter-out $(SRCDIR)/Main.cpp,$(SOURCES))
 
-# Ajuda
-help:
-	@echo "Comandos disponíveis:"
-	@echo "  make            - Compila versão release"
-	@echo "  make debug      - Compila versão debug"
-	@echo "  make profile    - Compila versão com profiling"
-	@echo "  make run        - Executa o programa"
-	@echo "  make memcheck   - Roda valgrind para memory leaks"
-	@echo "  make benchmark  - Executa e mede tempo"
-	@echo "  make check-data - Verifica arquivos de entrada"
-	@echo "  make install    - Instala em /usr/local/bin"
-	@echo "  make uninstall  - Remove de /usr/local/bin"
-	@echo "  make clean      - Limpa arquivos compilados"
-	@echo "  make help       - Exibe esta ajuda"

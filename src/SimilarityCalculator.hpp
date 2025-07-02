@@ -16,7 +16,7 @@ public:
     SimilarityCalculator(const std::unordered_map<uint32_t, UserProfile> &u);
 
     // Calcula similaridade de Pearson entre dois usuários
-    float calculatePearsonCorrelation(uint32_t user1, uint32_t user2) const;
+    float calculateCosineSimilarity(uint32_t user1, uint32_t user2) const;
 
 private:
     uint64_t makeKey(uint32_t user1, uint32_t user2) const;

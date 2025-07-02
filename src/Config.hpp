@@ -8,7 +8,7 @@
 namespace Config
 {
    // Parâmetros de recomendação
-   const int TOP_K = 5;                // Número de recomendações a retornar
+   const int TOP_K = 100;              // Número de recomendações a retornar
    const int MAX_SIMILAR_USERS = 500;  // Máximo de usuários similares a considerar
    const int MIN_COMMON_ITEMS = 1;     // MUDANÇA: Aceita 1+ filme em comum (era 2)
    const float MIN_RATING = 3.5f;      // Rating mínimo para considerar positivo
