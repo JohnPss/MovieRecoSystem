@@ -258,7 +258,7 @@ Os arquivos utilizados pelo sistema seguem padrões específicos para garantir c
 
     Formato: Texto puro (UTF-8).
 
-    Estrutura: Cada linha representa um `usuario_id` seguido pelos `item_ids` recomendados. ****************************************************
+    Estrutura: Cada linha representa um `usuario_id` seguido pelos `item_ids` recomendados.
     Exemplo:
     ```
     123 54 76 145
