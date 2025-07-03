@@ -310,13 +310,45 @@ scores[movieId] += similarity * (rating - simUserAvg);
 
 ### Configurações Chave (src/Config.hpp)
 ```
-const int TOP_K = 100;                 // Número de filmes a recomendar por usuário (N em Top-N)
-const int MAX_SIMILAR_USERS = 500;     // Máximo de usuários similares a considerar (K de vizinhos)
-const int MIN_COMMON_ITEMS = 1;        // Mínimo de filmes em comum para calcular similaridade
-const float MIN_SIMILARITY = 0.01f;    // Similaridade mínima aceita para um usuário ser considerado vizinho
-// Constantes LSH (exemplos, ajuste conforme o seu Config.hpp):
-// const int LSH_NUM_HASH_FUNCTIONS = 96;
-// const int LSH_NUM_BANDS = 24;
-// const int LSH_ROWS_PER_BAND = 4;
-// const int LSH_NUM_TABLES = 8;
+namespace Config
+{
+    // Parâmetros de recomendação principal
+    const int TOP_K = 20;               // Número de recomendações a retornar para cada usuário
+    const int MAX_SIMILAR_USERS = 500;  // Máximo de usuários similares a considerar para o CF
+    const int MIN_COMMON_ITEMS = 1;     // Mínimo de filmes em comum entre dois usuários para cálculo de similaridade
+    const float MIN_RATING = 3.5f;      // Rating mínimo para um filme ser considerado uma avaliação "positiva"
+    const float MIN_SIMILARITY = 0.01f; // Similaridade mínima aceita para um usuário ser considerado vizinho
+    const int MAX_CANDIDATES = 1000;    // Máximo de candidatos a vizinhos a serem buscados via LSH
+
+    // Parâmetros LSH (Locality Sensitive Hashing) otimizados
+    const int NUM_HASH_FUNCTIONS = 96;  // Total de funções hash utilizadas para gerar assinaturas MinHash
+    const int NUM_BANDS = 24;           // Número de bandas para agrupar as assinaturas LSH
+    const int ROWS_PER_BAND = 4;        // Número de linhas (hashes) por banda
+    const int NUM_TABLES = 8;           // Número de tabelas hash para aumentar a probabilidade de colisão (recall)
+    const uint32_t LARGE_PRIME = 4294967291u; // Número primo grande usado nas funções hash
+
+    // Pesos para o sistema de recomendação híbrido
+    const float CF_WEIGHT = 1.0f;         // Peso da componente de Filtragem Colaborativa
+    const float CB_WEIGHT = 1.0f;         // Peso da componente de Filtragem Baseada em Conteúdo
+    const float POPULARITY_WEIGHT = 3.0f; // Peso da componente de Popularidade dos filmes
+    const float POPULARITY_BOOST_WEIGHT = 1.5f; // Peso adicional para o boost de popularidade em cenários específicos
+
+    // Configurações de Fallback para candidatos de CF
+    const int MIN_CANDIDATES_FOR_CF = 50;        // Limite mínimo de candidatos LSH para prosseguir normalmente com CF
+    const int EMERGENCY_FALLBACK_THRESHOLD = 10; // Limite abaixo do qual o sistema entra em modo de fallback de emergência
+
+    // Parâmetros de performance e paralelização
+    const int NUM_THREADS = std::thread::hardware_concurrency() - 2; // Número de threads para processamento paralelo
+    const int BATCH_SIZE = 100; // Tamanho do batch para processamento paralelo
+
+    // Caminhos dos arquivos de dados
+    inline static const std::string USERS_FILE = "datasets/explore.dat";        // Arquivo de usuários para recomendar
+    inline static const std::string MOVIES_FILE = "ml-25m/movies.csv";          // Arquivo de metadados de filmes (para CB/popularidade)
+    inline static const std::string RATINGS_FILE = "datasets/input.dat";        // Arquivo de avaliações pré-processadas
+    inline static const std::string OUTPUT_FILE = "outcome/output.dat";         // Arquivo de saída com as recomendações
+    inline static const std::string DEBUG_OUTPUT_FILE = "outcome/debug_recommendations.txt"; // Arquivo para logs de depuração
+}
 ```
+
+
+## 
