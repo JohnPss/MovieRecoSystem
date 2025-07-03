@@ -258,3 +258,65 @@ Os arquivos utilizados pelo sistema seguem padrões específicos para garantir c
     ```
     123 54 76 145
     ```
+
+## Algoritmo de Recomendação
+
+O sistema implementa uma abordagem avançada de Filtragem Colaborativa Baseada em Usuários (`User-Based Collaborative Filtering`), otimizada para eficiência e precisão na geração de recomendações.
+
+### Métricas de Similaridade
+
+Após testes com diferentes métricas como Jaccard e Pearson, a Similaridade do Cosseno foi a métrica escolhida para calcular a afinidade entre usuários.
+Motivo da Escolha (Similaridade do Cosseno):
+A Similaridade do Cosseno é ideal para sistemas de recomendação por diversas razões:
+- Foco na Direção: Concentra-se na direção dos vetores de avaliação dos usuários, e não na magnitude. Isso significa que usuários com padrões de avaliação semelhantes (gostam/não gostam dos mesmos filmes), mas que avaliam em escalas diferentes (um sempre dá notas mais altas que o outro), ainda assim serão considerados similares.
+- Robustez a Tendências de Avaliação: É menos sensível a usuários que avaliam consistentemente com notas mais altas ou mais baixas, focando no relacionamento relativo entre as avaliações.
+- Eficácia com Dados Esparsos: Funciona bem mesmo com dados esparsos, onde a maioria dos filmes não foi avaliada pela maioria dos usuários, pois considera apenas os itens avaliados em comum.
+- Boa Performance Computacional: Apresenta um equilíbrio favorável entre acurácia e custo computacional.
+
+### Lógica de Recomendação Detalhada
+Para cada `usuario_id` presente no arquivo `explore.dat`, o procedimento de recomendação segue as etapas:
+#### Pré-cálculo e Otimização com LSH
+- Assinaturas MinHash: Perfis de usuários são convertidos em "impressões digitais" compactas (assinaturas MinHash).
+- Indexação em `bands`: Essas assinaturas são organizadas em `buckets` através de múltiplas `bands`, permitindo uma busca rápida por usuários potencialmente similares.
+- Busca de Candidatos (`findCandidateUsersLSH`): O LSH é utilizado para encontrar eficientemente um conjunto inicial de usuários que são candidatos a serem vizinhos similares, reduzindo drasticamente o espaço de busca.
+- Fallback Inteligente: Caso o número de candidatos encontrados via LSH seja insuficiente, o sistema relaxa automaticamente os critérios de busca para garantir a obtenção de um número adequado de vizinhos.
+- Configuração Otimizada LSH: A otimização do LSH é configurada em `src/Config.hpp` com `96 funções hash`, distribuídas em `24 bands` com `4 rows por band`, utilizando `8 tabelas` para equilibrar a precisão e o recall.
+#### Cálculo Preciso da Similaridade
+- A Similaridade do Cosseno é então calculada entre o usuário-alvo e os usuários candidatos identificados pelo LSH.
+
+- São considerados apenas usuários com no mínimo `MIN_COMMON_ITEMS` (definido em `Config.hpp`) filmes avaliados em comum.
+
+- É aplicada uma filtragem para considerar apenas usuários com similaridade acima de `MIN_SIMILARITY` (definido em `Config.hpp`).
+#### Seleção dos `MAX_SIMILAR_USERS` Vizinhos Mais Similares:
+- Dentre os usuários que atenderam aos critérios de similaridade, os `MAX_SIMILAR_USERS` (constante em `Config.hpp`) com as maiores pontuações de Similaridade do Cosseno são selecionados como vizinhos.
+#### Geração e Ponderação das Recomendações de Filmes:
+Para cada filme não avaliado pelo usuário-alvo, o sistema calcula uma pontuação de recomendação. A implementação utiliza uma média ponderada sofisticada para prever a avaliação do usuário-alvo para esse filme. A lógica central é:
+```
+scores[movieId] += similarity * (rating - simUserAvg);
+```
+- Média Ponderada: Cada vizinho contribui para a pontuação do filme proporcionalmente à sua Similaridade do Cosseno com o usuário-alvo.
+
+- Normalização Personalizada: A expressão (`rating - simUserAvg`) normaliza a avaliação do vizinho (`rating`) subtraindo a média das avaliações do próprio vizinho (`simUserAvg`). Isso compensa as tendências de avaliação individuais (usuários que dão notas consistentemente altas ou baixas), garantindo que a recomendação reflita o desvio do vizinho em relação à sua própria média, e não apenas a nota absoluta.
+
+- Sobreposição de Interesse: Filmes avaliados por um maior número de vizinhos similares naturalmente acumulam mais pontos, refletindo um maior "consenso" entre os usuários com gostos semelhantes.
+
+- Boost de Popularidade : Se o sistema usa dados de `movies.csv` para popularidade, filmes mais populares podem receber um pequeno peso extra para evitar recomendações muito obscuras.
+
+- Content-Based Boost : Se a lógica considera os gêneros preferidos do usuário (inferidos de suas avaliações), filmes desses gêneros podem receber um "boost" adicional. (Se você não implementou os boosts de popularidade/gênero, me avise para remover).
+#### Seleção dos Top-N Filmes para Recomendação:
+- Os filmes são classificados com base nas suas pontuações calculadas.
+
+- Os `TOP_K` filmes com as maiores pontuações são selecionados para serem recomendados ao usuário-alvo.
+
+### Configurações Chave (src/Config.hpp)
+```
+const int TOP_K = 100;                 // Número de filmes a recomendar por usuário (N em Top-N)
+const int MAX_SIMILAR_USERS = 500;     // Máximo de usuários similares a considerar (K de vizinhos)
+const int MIN_COMMON_ITEMS = 1;        // Mínimo de filmes em comum para calcular similaridade
+const float MIN_SIMILARITY = 0.01f;    // Similaridade mínima aceita para um usuário ser considerado vizinho
+// Constantes LSH (exemplos, ajuste conforme o seu Config.hpp):
+// const int LSH_NUM_HASH_FUNCTIONS = 96;
+// const int LSH_NUM_BANDS = 24;
+// const int LSH_ROWS_PER_BAND = 4;
+// const int LSH_NUM_TABLES = 8;
+```
