@@ -13,6 +13,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <immintrin.h>
 
 // Para Memory-Mapped Files (Unix/Linux)
 #include <sys/mman.h>
@@ -21,26 +22,28 @@
 #include <unistd.h>
 #include <cstdio>
 
-// --- Estruturas Compactas ---
-struct Rating {
-    uint32_t movieId;
-    uint8_t rating; // 0-50 (rating * 10)
+// --- Estruturas Ultra-Compactas ---
+#pragma pack(push, 1)
+struct CompactRating {
+    uint32_t movieId : 24;  // Suporta até 16M filmes
+    uint8_t rating;         // Rating * 10 (0-50)
     
-    Rating(uint32_t id, uint8_t r) : movieId(id), rating(r) {}
-    
-    bool operator<(const Rating& other) const {
-        return movieId < other.movieId;
-    }
+    CompactRating(uint32_t id, uint8_t r) : movieId(id), rating(r) {}
 };
+#pragma pack(pop)
 
-struct DataChunk {
+struct alignas(64) DataChunk {  // Alinhado em cache line
     const char* start;
     const char* end;
-    // Arrays paralelos são mais cache-friendly
+    // Vetores planos para melhor cache
     std::vector<uint32_t> user_ids;
-    std::vector<std::vector<Rating>> user_ratings;
-    std::unordered_map<uint32_t, uint32_t> movie_count;
+    std::vector<uint32_t> user_offsets;  // Onde começam os ratings de cada user
+    std::vector<CompactRating> all_ratings;
+    std::vector<std::pair<uint32_t, uint32_t>> movie_counts;  // movieId, count
 };
+
+// Tabela de lookup para parsing
+extern const uint8_t digit_lookup[256];
 
 // --- Funções Principais ---
 const char* find_ratings_file();

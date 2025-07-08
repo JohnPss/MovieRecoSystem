@@ -1,9 +1,10 @@
 #include "preProcessamento.hpp"
-#include <immintrin.h>
-#include <cstdint>
 
-// Tabela de conversão ASCII->dígito
-static const uint8_t digit_val[256] = {
+#include <unordered_set>
+#include <x86intrin.h>
+
+// Tabela de lookup para conversão rápida ASCII->dígito
+alignas(64) const uint8_t digit_lookup[256] = {
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
@@ -22,86 +23,107 @@ static const uint8_t digit_val[256] = {
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
 };
 
-// Parse ultra-rápido
-__attribute__((always_inline)) inline uint32_t parse_uint(const char*& p) {
+// Parse ultra-rápido sem branches
+__attribute__((always_inline)) inline uint32_t parse_int_fast(const char*& p) {
     uint32_t val = 0;
     uint8_t digit;
-    while ((digit = digit_val[(uint8_t)*p]) < 10) {
+    
+    // Unroll loop para melhor performance
+    while ((digit = digit_lookup[(uint8_t)*p]) < 10) {
         val = val * 10 + digit;
         p++;
     }
     return val;
 }
 
-__attribute__((always_inline)) inline uint8_t parse_rating(const char*& p) {
-    uint8_t val = 0;
-    uint8_t digit;
+__attribute__((always_inline)) inline uint8_t parse_rating_fast(const char*& p) {
+    uint8_t val = digit_lookup[(uint8_t)*p++] * 10;
     
-    while ((digit = digit_val[(uint8_t)*p]) < 10) {
-        val = val * 10 + digit;
-        p++;
+    if (digit_lookup[(uint8_t)*p] < 10) {
+        val += digit_lookup[(uint8_t)*p++];
     }
-    val *= 10;
     
     if (*p == '.') {
         p++;
-        if ((digit = digit_val[(uint8_t)*p]) < 10) {
-            val += digit;
-            p++;
+        if (digit_lookup[(uint8_t)*p] < 10) {
+            val += digit_lookup[(uint8_t)*p++];
+        } else {
+            val *= 10;
         }
-        while (digit_val[(uint8_t)*p] < 10) p++;
+        // Pula dígitos extras
+        while (digit_lookup[(uint8_t)*p] < 10) p++;
+    } else {
+        val *= 10;
     }
     
     return val;
 }
 
 // Processamento de chunk otimizado
-void process_chunk(DataChunk* chunk) {
+void process_chunk_optimized(DataChunk* chunk) {
     const char* p = chunk->start;
     const char* end = chunk->end;
+    
+    // Pré-aloca vetores
+    chunk->user_ids.reserve(80000);
+    chunk->user_offsets.reserve(80000);
+    chunk->all_ratings.reserve(2000000);
+    
+    // Hash map local para contagem de filmes
+    std::unordered_map<uint32_t, uint32_t> local_movie_count;
+    local_movie_count.reserve(30000);
+    
+    // Hash map para mapear userId -> índice
+    std::unordered_map<uint32_t, uint32_t> user_index_map;
+    user_index_map.reserve(80000);
     
     // Alinha com início de linha
     if (p != chunk->start) {
         while (p < end && *(p-1) != '\n') p++;
     }
     
-    // Mapeia userId para índice no vetor
-    std::unordered_map<uint32_t, size_t> user_index;
-    chunk->movie_count.reserve(30000);
-    
-    while (p < end) {
-        uint32_t userId = parse_uint(p);
+    while (p < end - 20) {  // -20 para garantir que não passamos do fim
+        // Parse userId
+        uint32_t userId = parse_int_fast(p);
         if (*p++ != ',') {
             while (p < end && *p != '\n') p++;
-            if (p < end) p++;
+            p++;
             continue;
         }
         
-        uint32_t movieId = parse_uint(p);
+        // Parse movieId
+        uint32_t movieId = parse_int_fast(p);
         if (*p++ != ',') {
             while (p < end && *p != '\n') p++;
-            if (p < end) p++;
+            p++;
             continue;
         }
         
-        uint8_t rating = parse_rating(p);
+        // Parse rating
+        uint8_t rating = parse_rating_fast(p);
         while (p < end && *p != '\n') p++;
-        if (p < end) p++;
+        p++;
         
         // Adiciona rating
-        auto it = user_index.find(userId);
-        if (it == user_index.end()) {
-            size_t idx = chunk->user_ids.size();
+        auto it = user_index_map.find(userId);
+        if (it == user_index_map.end()) {
+            uint32_t idx = chunk->user_ids.size();
             chunk->user_ids.push_back(userId);
-            chunk->user_ratings.emplace_back();
-            chunk->user_ratings.back().reserve(100);
-            user_index[userId] = idx;
-            chunk->user_ratings[idx].emplace_back(movieId, rating);
-        } else {
-            chunk->user_ratings[it->second].emplace_back(movieId, rating);
+            chunk->user_offsets.push_back(chunk->all_ratings.size());
+            user_index_map[userId] = idx;
         }
         
-        chunk->movie_count[movieId]++;
+        chunk->all_ratings.emplace_back(movieId, rating);
+        local_movie_count[movieId]++;
+    }
+    
+    // Finaliza último user offset
+    chunk->user_offsets.push_back(chunk->all_ratings.size());
+    
+    // Converte movie counts para vetor
+    chunk->movie_counts.reserve(local_movie_count.size());
+    for (const auto& pair : local_movie_count) {
+        chunk->movie_counts.push_back(pair);
     }
 }
 
@@ -120,14 +142,16 @@ int process_ratings_file() {
         return 1;
     }
     
-    // Mapeia arquivo com flags otimizadas
+    // Mapeia arquivo com huge pages se possível
     int fd = open(filename, O_RDONLY);
     if (fd == -1) return 1;
     
     struct stat sb;
     fstat(fd, &sb);
     
-    void* mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE | MAP_HUGETLB, fd, 0);
+    // Tenta huge pages primeiro
+    void* mapped = mmap(NULL, sb.st_size, PROT_READ, 
+                       MAP_PRIVATE | MAP_POPULATE | MAP_HUGETLB, fd, 0);
     if (mapped == MAP_FAILED) {
         mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
     }
@@ -137,7 +161,7 @@ int process_ratings_file() {
     // Pula header
     const char* data_start = file_data;
     while (*data_start && *data_start != '\n') data_start++;
-    if (*data_start) data_start++;
+    data_start++;
     
     // Processamento paralelo
     const int num_threads = std::thread::hardware_concurrency();
@@ -149,105 +173,130 @@ int process_ratings_file() {
     for (int i = 0; i < num_threads; i++) {
         chunks[i].start = data_start + (i * chunk_size);
         chunks[i].end = (i == num_threads - 1) ? file_data + sb.st_size : data_start + ((i + 1) * chunk_size);
-        threads.emplace_back(process_chunk, &chunks[i]);
+        threads.emplace_back(process_chunk_optimized, &chunks[i]);
     }
     
     for (auto& t : threads) t.join();
     
-    // Merge otimizado
-    std::unordered_map<uint32_t, size_t> global_user_index;
-    std::vector<std::vector<Rating>> all_ratings;
+    // Merge otimizado dos chunks
+    std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> global_users; // userId -> (offset, count)
+    std::vector<CompactRating> all_ratings;
     std::unordered_map<uint32_t, uint32_t> movie_counts;
     
-    size_t total_users = 0;
+    // Calcula tamanho total
+    size_t total_ratings = 0;
     for (const auto& chunk : chunks) {
-        total_users += chunk.user_ids.size();
+        total_ratings += chunk.all_ratings.size();
     }
-    all_ratings.reserve(total_users);
+    all_ratings.reserve(total_ratings);
     movie_counts.reserve(60000);
     
-    // Merge chunks
+    // Merge ratings
     for (const auto& chunk : chunks) {
         for (size_t i = 0; i < chunk.user_ids.size(); i++) {
             uint32_t userId = chunk.user_ids[i];
-            auto it = global_user_index.find(userId);
-            if (it == global_user_index.end()) {
-                global_user_index[userId] = all_ratings.size();
-                all_ratings.push_back(chunk.user_ratings[i]);
+            uint32_t start = chunk.user_offsets[i];
+            uint32_t end = chunk.user_offsets[i + 1];
+            uint32_t count = end - start;
+            
+            auto it = global_users.find(userId);
+            if (it == global_users.end()) {
+                global_users[userId] = {all_ratings.size(), count};
+                all_ratings.insert(all_ratings.end(), 
+                                 chunk.all_ratings.begin() + start,
+                                 chunk.all_ratings.begin() + end);
             } else {
-                auto& target = all_ratings[it->second];
-                const auto& source = chunk.user_ratings[i];
-                target.insert(target.end(), source.begin(), source.end());
+                // Usuário já existe, adiciona ratings
+                all_ratings.insert(all_ratings.end(), 
+                                 chunk.all_ratings.begin() + start,
+                                 chunk.all_ratings.begin() + end);
+                it->second.second += count;
             }
         }
         
-        for (const auto& [movieId, count] : chunk.movie_count) {
-            movie_counts[movieId] += count;
+        // Merge movie counts
+        for (const auto& pair : chunk.movie_counts) {
+            movie_counts[pair.first] += pair.second;
         }
     }
     
     munmap(mapped, sb.st_size);
     
-    // Filmes válidos em vetor para binary search
-    std::vector<uint32_t> valid_movies;
+    // Filtra filmes válidos
+    std::unordered_set<uint32_t> valid_movies;
     valid_movies.reserve(20000);
     for (const auto& [movieId, count] : movie_counts) {
-        if (count >= 50) valid_movies.push_back(movieId);
+        if (count >= 50) valid_movies.insert(movieId);
     }
-    std::sort(valid_movies.begin(), valid_movies.end());
     
-    // Escrita otimizada
+    // Escrita ultra-otimizada
     system("mkdir -p datasets 2>/dev/null");
     
-    FILE* out = fopen("datasets/input.dat", "wb");
-    if (!out) return 1;
+    int out_fd = open("datasets/input.dat", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (out_fd == -1) return 1;
     
-    // Buffer gigante
-    const size_t WRITE_BUFFER_SIZE = 128 * 1024 * 1024; // 128MB
-    char* buffer = (char*)aligned_alloc(4096, WRITE_BUFFER_SIZE);
-    setvbuf(out, buffer, _IOFBF, WRITE_BUFFER_SIZE);
+    // Buffer gigante alinhado
+    const size_t BUFFER_SIZE = 128 * 1024 * 1024; // 128MB
+    char* buffer = (char*)aligned_alloc(4096, BUFFER_SIZE);
+    size_t buffer_pos = 0;
     
+    // Lambda para flush
+    auto flush = [&]() {
+        if (buffer_pos > 0) {
+            write(out_fd, buffer, buffer_pos);
+            buffer_pos = 0;
+        }
+    };
+    
+    // Buffer local para formatação
+    char line[131072]; // 128KB
     int written = 0;
     
-    // Buffer temporário para linha
-    std::vector<char> line(1024 * 1024);
-    
-    for (const auto& [userId, idx] : global_user_index) {
-        auto& ratings = all_ratings[idx];
-        if (ratings.size() < 50) continue;
+    for (const auto& [userId, info] : global_users) {
+        uint32_t offset = info.first;
+        uint32_t count = info.second;
         
-        // Verifica se tem 50+ válidos
-        int valid = 0;
-        for (const auto& r : ratings) {
-            if (std::binary_search(valid_movies.begin(), valid_movies.end(), r.movieId)) {
-                if (++valid >= 50) break;
+        if (count < 50) continue;
+        
+        // Conta ratings válidos
+        int valid_count = 0;
+        for (uint32_t i = 0; i < count; i++) {
+            if (valid_movies.count(all_ratings[offset + i].movieId)) {
+                valid_count++;
+                if (valid_count >= 50) break;
             }
         }
-        if (valid < 50) continue;
         
-        // Ordena
-        std::sort(ratings.begin(), ratings.end());
+        if (valid_count < 50) continue;
         
         // Formata linha
-        char* p = line.data();
+        char* p = line;
         p += sprintf(p, "%u", userId);
         
-        for (const auto& r : ratings) {
-            if (std::binary_search(valid_movies.begin(), valid_movies.end(), r.movieId)) {
+        for (uint32_t i = 0; i < count; i++) {
+            const auto& r = all_ratings[offset + i];
+            if (valid_movies.count(r.movieId)) {
                 if (r.rating % 10 == 0) {
-                    p += sprintf(p, " %u:%u.0", r.movieId, r.rating / 10);
+                    p += sprintf(p, " %u:%u.0", (uint32_t)r.movieId, r.rating / 10);
                 } else {
-                    p += sprintf(p, " %u:%u.%u", r.movieId, r.rating / 10, r.rating % 10);
+                    p += sprintf(p, " %u:%u.%u", (uint32_t)r.movieId, r.rating / 10, r.rating % 10);
                 }
             }
         }
         *p++ = '\n';
         
-        fwrite(line.data(), 1, p - line.data(), out);
+        size_t line_len = p - line;
+        if (buffer_pos + line_len > BUFFER_SIZE - 131072) {
+            flush();
+        }
+        
+        memcpy(buffer + buffer_pos, line, line_len);
+        buffer_pos += line_len;
         written++;
     }
     
-    fclose(out);
+    flush();
+    close(out_fd);
     free(buffer);
     
     std::cout << "Pré-processamento concluído: " << written << " usuários escritos" << std::endl;
