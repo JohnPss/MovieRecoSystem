@@ -1,304 +1,289 @@
 #include "preProcessamento.hpp"
-
 #include <unordered_set>
-#include <x86intrin.h>
+#include <charconv> // Para std::to_chars (C++17)
 
-// Tabela de lookup para conversão rápida ASCII->dígito
-alignas(64) const uint8_t digit_lookup[256] = {
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    0,1,2,3,4,5,6,7,8,9,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255
-};
+// --- Funções Auxiliares de Parsing Otimizadas (sem alterações) ---
 
-// Parse ultra-rápido sem branches
-__attribute__((always_inline)) inline uint32_t parse_int_fast(const char*& p) {
-    uint32_t val = 0;
-    uint8_t digit;
-    
-    // Unroll loop para melhor performance
-    while ((digit = digit_lookup[(uint8_t)*p]) < 10) {
-        val = val * 10 + digit;
-        p++;
-    }
-    return val;
+inline bool is_digit(char c) {
+    return c >= '0' && c <= '9';
 }
 
-__attribute__((always_inline)) inline uint8_t parse_rating_fast(const char*& p) {
-    uint8_t val = digit_lookup[(uint8_t)*p++] * 10;
-    
-    if (digit_lookup[(uint8_t)*p] < 10) {
-        val += digit_lookup[(uint8_t)*p++];
-    }
-    
-    if (*p == '.') {
+inline int safe_fast_stoi(char*& p, char* end) {
+    if (p >= end) return 0;
+    int val = 0;
+    bool negative = (*p == '-');
+    if (negative) {
         p++;
-        if (digit_lookup[(uint8_t)*p] < 10) {
-            val += digit_lookup[(uint8_t)*p++];
-        } else {
-            val *= 10;
-        }
-        // Pula dígitos extras
-        while (digit_lookup[(uint8_t)*p] < 10) p++;
-    } else {
-        val *= 10;
+        if (p >= end) return 0;
     }
-    
-    return val;
+    while (p < end && is_digit(*p)) {
+        val = (val << 3) + (val << 1) + (*p - '0');
+        p++;
+    }
+    return negative ? -val : val;
 }
 
-// Processamento de chunk otimizado
-void process_chunk_optimized(DataChunk* chunk) {
-    const char* p = chunk->start;
-    const char* end = chunk->end;
-    
-    // Pré-aloca vetores
-    chunk->user_ids.reserve(80000);
-    chunk->user_offsets.reserve(80000);
-    chunk->all_ratings.reserve(2000000);
-    
-    // Hash map local para contagem de filmes
-    std::unordered_map<uint32_t, uint32_t> local_movie_count;
-    local_movie_count.reserve(30000);
-    
-    // Hash map para mapear userId -> índice
-    std::unordered_map<uint32_t, uint32_t> user_index_map;
-    user_index_map.reserve(80000);
-    
-    // Alinha com início de linha
-    if (p != chunk->start) {
-        while (p < end && *(p-1) != '\n') p++;
+inline float safe_fast_stof(char*& p, char* end) {
+    if (p >= end) return 0.0f;
+    float val = 0.0f;
+    bool negative = (*p == '-');
+    if (negative) {
+        p++;
+        if (p >= end) return 0.0f;
     }
-    
-    while (p < end - 20) {  // -20 para garantir que não passamos do fim
-        // Parse userId
-        uint32_t userId = parse_int_fast(p);
-        if (*p++ != ',') {
-            while (p < end && *p != '\n') p++;
+    while (p < end && is_digit(*p)) {
+        val = val * 10.0f + (*p - '0');
+        p++;
+    }
+    if (p < end && *p == '.') {
+        p++;
+        float decimal_multiplier = 0.1f;
+        while (p < end && is_digit(*p)) {
+            val += (*p - '0') * decimal_multiplier;
+            decimal_multiplier *= 0.1f;
             p++;
+        }
+    }
+    return negative ? -val : val;
+}
+
+inline void safe_advance_to_next_line(char*& p, char* end) {
+    while (p < end && *p != '\n') p++;
+    if (p < end) p++;
+}
+
+// --- PASSO 1: Processamento de Chunks para Contagem (sem alterações) ---
+void process_chunk(DataChunk* chunk) {
+    char* current_pos = chunk->start;
+    char* end_pos = chunk->end;
+
+    while (current_pos < end_pos && *current_pos != '\n') current_pos++;
+    if (current_pos < end_pos) current_pos++;
+
+    chunk->local_user_data.reserve(50000);
+    chunk->local_movie_count.reserve(60000);
+
+    while (current_pos < end_pos) {
+        int userId = safe_fast_stoi(current_pos, end_pos);
+        if (current_pos >= end_pos || *current_pos != ',') {
+            safe_advance_to_next_line(current_pos, end_pos);
             continue;
         }
-        
-        // Parse movieId
-        uint32_t movieId = parse_int_fast(p);
-        if (*p++ != ',') {
-            while (p < end && *p != '\n') p++;
-            p++;
+        current_pos++;
+
+        int movieId = safe_fast_stoi(current_pos, end_pos);
+        if (current_pos >= end_pos || *current_pos != ',') {
+            safe_advance_to_next_line(current_pos, end_pos);
             continue;
         }
-        
-        // Parse rating
-        uint8_t rating = parse_rating_fast(p);
-        while (p < end && *p != '\n') p++;
-        p++;
-        
-        // Adiciona rating
-        auto it = user_index_map.find(userId);
-        if (it == user_index_map.end()) {
-            uint32_t idx = chunk->user_ids.size();
-            chunk->user_ids.push_back(userId);
-            chunk->user_offsets.push_back(chunk->all_ratings.size());
-            user_index_map[userId] = idx;
+        current_pos++;
+
+        float rating = safe_fast_stof(current_pos, end_pos);
+        safe_advance_to_next_line(current_pos, end_pos);
+
+        if (userId > 0 && movieId > 0 && rating >= 0.0f && rating <= 5.0f) {
+            chunk->local_user_data[userId].emplace_back(movieId, rating);
+            chunk->local_movie_count[movieId]++;
         }
+    }
+}
+
+// --- PASSO 2: Nova Função para Filtrar e Escrever em Paralelo ---
+void filter_and_write_chunk(const DataChunk* chunk, const std::unordered_set<int>* valid_movies, int thread_id) {
+    std::string temp_filename = "datasets/input.dat.tmp." + std::to_string(thread_id);
+    FILE* output_file = fopen(temp_filename.c_str(), "w");
+    if (!output_file) {
+        std::cerr << "ERRO: não foi possível criar o arquivo temporário " << temp_filename << std::endl;
+        return;
+    }
+
+    // Buffer de escrita otimizado (como no original)
+    const size_t BUFFER_SIZE = 4 * 1024 * 1024; // Buffer de 4MB
+    std::vector<char> write_buffer(BUFFER_SIZE);
+    size_t buffer_pos = 0;
+
+    auto flush_buffer = [&]() {
+        if (buffer_pos > 0) {
+            fwrite(write_buffer.data(), 1, buffer_pos, output_file);
+            buffer_pos = 0;
+        }
+    };
+
+    auto add_to_buffer = [&](const char* data, size_t len) {
+        if (buffer_pos + len >= BUFFER_SIZE) {
+            flush_buffer();
+        }
+        memcpy(write_buffer.data() + buffer_pos, data, len);
+        buffer_pos += len;
+    };
+
+    char line_buffer[16384];
+    std::vector<Rating> valid_ratings_for_user;
+    valid_ratings_for_user.reserve(200); // Pré-alocação para evitar realocações
+
+    for (const auto& user_pair : chunk->local_user_data) {
+        const auto& all_ratings = user_pair.second;
         
-        chunk->all_ratings.emplace_back(movieId, rating);
-        local_movie_count[movieId]++;
+        // Filtra avaliações para manter apenas as de filmes válidos
+        valid_ratings_for_user.clear();
+        for (const auto& rating : all_ratings) {
+            if (valid_movies->count(rating.movieId)) {
+                valid_ratings_for_user.push_back(rating);
+            }
+        }
+
+        // Apenas escreve o usuário se ele tiver o número mínimo de avaliações VÁLIDAS
+        if (valid_ratings_for_user.size() >= 50) {
+            int userId = user_pair.first;
+            char* ptr = line_buffer;
+            char* const end_ptr = line_buffer + sizeof(line_buffer);
+            
+            auto [p1, ec1] = std::to_chars(ptr, end_ptr, userId);
+            if (ec1 != std::errc()) continue;
+            ptr = p1;
+
+            for (const auto& rating : valid_ratings_for_user) {
+                if (end_ptr - ptr < 50) break; // Garante espaço
+                *ptr++ = ' ';
+                auto [p2, ec2] = std::to_chars(ptr, end_ptr, rating.movieId);
+                if (ec2 != std::errc()) break;
+                ptr = p2;
+                *ptr++ = ':';
+                auto [p3, ec3] = std::to_chars(ptr, end_ptr, rating.rating, std::chars_format::fixed, 1);
+                if (ec3 != std::errc()) break;
+                ptr = p3;
+            }
+            *ptr++ = '\n';
+            add_to_buffer(line_buffer, ptr - line_buffer);
+        }
     }
-    
-    // Finaliza último user offset
-    chunk->user_offsets.push_back(chunk->all_ratings.size());
-    
-    // Converte movie counts para vetor
-    chunk->movie_counts.reserve(local_movie_count.size());
-    for (const auto& pair : local_movie_count) {
-        chunk->movie_counts.push_back(pair);
-    }
+
+    flush_buffer();
+    fclose(output_file);
 }
 
-const char* find_ratings_file() {
-    const char* paths[] = {"ml-25m/ratings.csv", "datasets/ratings.csv", "ratings.csv"};
-    for (const char* path : paths) {
-        if (access(path, F_OK) == 0) return path;
+
+// --- PASSO 3: Função para Concatenar Arquivos Temporários ---
+void concatenate_temp_files(int num_threads) {
+    const char* final_filename = "datasets/input.dat";
+    FILE* final_output = fopen(final_filename, "wb"); // 'wb' para escrita binária rápida
+    if (!final_output) {
+        std::cerr << "ERRO: não foi possível criar o arquivo de saída final " << final_filename << std::endl;
+        return;
     }
-    return nullptr;
+
+    std::vector<char> concat_buffer(4 * 1024 * 1024); // Buffer de 4MB para concatenação
+
+    for (int i = 0; i < num_threads; ++i) {
+        std::string temp_filename = "datasets/input.dat.tmp." + std::to_string(i);
+        FILE* temp_input = fopen(temp_filename.c_str(), "rb");
+        if (temp_input) {
+            size_t bytes_read;
+            while ((bytes_read = fread(concat_buffer.data(), 1, concat_buffer.size(), temp_input)) > 0) {
+                fwrite(concat_buffer.data(), 1, bytes_read, final_output);
+            }
+            fclose(temp_input);
+            remove(temp_filename.c_str());
+        }
+    }
+    fclose(final_output);
 }
 
+
+// --- Função Principal de Orquestração (Reestruturada) ---
 int process_ratings_file() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+
     const char* filename = find_ratings_file();
     if (!filename) {
         std::cerr << "ERRO: ratings.csv não encontrado" << std::endl;
         return 1;
     }
     
-    // Mapeia arquivo com huge pages se possível
+    // Mapeamento do arquivo
     int fd = open(filename, O_RDONLY);
-    if (fd == -1) return 1;
-    
+    if (fd == -1) { /* ... tratamento de erro ... */ return 1; }
     struct stat sb;
-    fstat(fd, &sb);
-    
-    // Tenta huge pages primeiro
-    void* mapped = mmap(NULL, sb.st_size, PROT_READ, 
-                       MAP_PRIVATE | MAP_POPULATE | MAP_HUGETLB, fd, 0);
-    if (mapped == MAP_FAILED) {
-        mapped = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE | MAP_POPULATE, fd, 0);
-    }
-    const char* file_data = (const char*)mapped;
+    if (fstat(fd, &sb) == -1) { /* ... tratamento de erro ... */ close(fd); return 1; }
+    char* file_data = (char*)mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (file_data == MAP_FAILED) { /* ... tratamento de erro ... */ close(fd); return 1; }
+    madvise(file_data, sb.st_size, MADV_SEQUENTIAL);
     close(fd);
-    
-    // Pula header
-    const char* data_start = file_data;
-    while (*data_start && *data_start != '\n') data_start++;
-    data_start++;
-    
-    // Processamento paralelo
-    const int num_threads = std::thread::hardware_concurrency();
-    const size_t chunk_size = ((file_data + sb.st_size) - data_start) / num_threads;
-    
+
+    char* current_pos = file_data;
+    char* end_pos = file_data + sb.st_size;
+    safe_advance_to_next_line(current_pos, end_pos); // Pula cabeçalho
+
+    const int num_threads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()));
+    const size_t data_size = end_pos - current_pos;
+    const size_t chunk_size = data_size / num_threads;
+
     std::vector<DataChunk> chunks(num_threads);
     std::vector<std::thread> threads;
-    
+
+    // --- PASSO 1: CONTAGEM PARALELA ---
+    std::cout << "Passo 1: Lendo e contando avaliações em paralelo..." << std::endl;
     for (int i = 0; i < num_threads; i++) {
-        chunks[i].start = data_start + (i * chunk_size);
-        chunks[i].end = (i == num_threads - 1) ? file_data + sb.st_size : data_start + ((i + 1) * chunk_size);
-        threads.emplace_back(process_chunk_optimized, &chunks[i]);
+        chunks[i].start = current_pos + (i * chunk_size);
+        chunks[i].end = (i == num_threads - 1) ? end_pos : current_pos + ((i + 1) * chunk_size);
+        threads.emplace_back(process_chunk, &chunks[i]);
     }
-    
-    for (auto& t : threads) t.join();
-    
-    // Merge otimizado dos chunks
-    std::unordered_map<uint32_t, std::pair<uint32_t, uint32_t>> global_users; // userId -> (offset, count)
-    std::vector<CompactRating> all_ratings;
-    std::unordered_map<uint32_t, uint32_t> movie_counts;
-    
-    // Calcula tamanho total
-    size_t total_ratings = 0;
-    for (const auto& chunk : chunks) {
-        total_ratings += chunk.all_ratings.size();
+    for (auto& t : threads) {
+        t.join();
     }
-    all_ratings.reserve(total_ratings);
-    movie_counts.reserve(60000);
-    
-    // Merge ratings
+
+    // --- MERGE APENAS DOS CONTADORES E IDENTIFICAÇÃO DE FILMES VÁLIDOS ---
+    std::cout << "Identificando filmes válidos..." << std::endl;
+    std::unordered_map<int, int> movie_count;
+    movie_count.reserve(60000);
     for (const auto& chunk : chunks) {
-        for (size_t i = 0; i < chunk.user_ids.size(); i++) {
-            uint32_t userId = chunk.user_ids[i];
-            uint32_t start = chunk.user_offsets[i];
-            uint32_t end = chunk.user_offsets[i + 1];
-            uint32_t count = end - start;
-            
-            auto it = global_users.find(userId);
-            if (it == global_users.end()) {
-                global_users[userId] = {all_ratings.size(), count};
-                all_ratings.insert(all_ratings.end(), 
-                                 chunk.all_ratings.begin() + start,
-                                 chunk.all_ratings.begin() + end);
-            } else {
-                // Usuário já existe, adiciona ratings
-                all_ratings.insert(all_ratings.end(), 
-                                 chunk.all_ratings.begin() + start,
-                                 chunk.all_ratings.begin() + end);
-                it->second.second += count;
-            }
-        }
-        
-        // Merge movie counts
-        for (const auto& pair : chunk.movie_counts) {
-            movie_counts[pair.first] += pair.second;
+        for (const auto& movie_pair : chunk.local_movie_count) {
+            movie_count[movie_pair.first] += movie_pair.second;
         }
     }
     
-    munmap(mapped, sb.st_size);
-    
-    // Filtra filmes válidos
-    std::unordered_set<uint32_t> valid_movies;
+    std::unordered_set<int> valid_movies;
     valid_movies.reserve(20000);
-    for (const auto& [movieId, count] : movie_counts) {
-        if (count >= 50) valid_movies.insert(movieId);
+    for (const auto& [movieId, count] : movie_count) {
+        if (count >= 50) {
+            valid_movies.insert(movieId);
+        }
     }
-    
-    // Escrita ultra-otimizada
-    system("mkdir -p datasets 2>/dev/null");
-    
-    int out_fd = open("datasets/input.dat", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (out_fd == -1) return 1;
-    
-    // Buffer gigante alinhado
-    const size_t BUFFER_SIZE = 128 * 1024 * 1024; // 128MB
-    char* buffer = (char*)aligned_alloc(4096, BUFFER_SIZE);
-    size_t buffer_pos = 0;
-    
-    // Lambda para flush
-    auto flush = [&]() {
-        if (buffer_pos > 0) {
-            write(out_fd, buffer, buffer_pos);
-            buffer_pos = 0;
-        }
-    };
-    
-    // Buffer local para formatação
-    char line[131072]; // 128KB
-    int written = 0;
-    
-    for (const auto& [userId, info] : global_users) {
-        uint32_t offset = info.first;
-        uint32_t count = info.second;
-        
-        if (count < 50) continue;
-        
-        // Conta ratings válidos
-        int valid_count = 0;
-        for (uint32_t i = 0; i < count; i++) {
-            if (valid_movies.count(all_ratings[offset + i].movieId)) {
-                valid_count++;
-                if (valid_count >= 50) break;
-            }
-        }
-        
-        if (valid_count < 50) continue;
-        
-        // Formata linha
-        char* p = line;
-        p += sprintf(p, "%u", userId);
-        
-        for (uint32_t i = 0; i < count; i++) {
-            const auto& r = all_ratings[offset + i];
-            if (valid_movies.count(r.movieId)) {
-                if (r.rating % 10 == 0) {
-                    p += sprintf(p, " %u:%u.0", (uint32_t)r.movieId, r.rating / 10);
-                } else {
-                    p += sprintf(p, " %u:%u.%u", (uint32_t)r.movieId, r.rating / 10, r.rating % 10);
-                }
-            }
-        }
-        *p++ = '\n';
-        
-        size_t line_len = p - line;
-        if (buffer_pos + line_len > BUFFER_SIZE - 131072) {
-            flush();
-        }
-        
-        memcpy(buffer + buffer_pos, line, line_len);
-        buffer_pos += line_len;
-        written++;
+    movie_count.clear(); // Libera memória
+
+    // --- PASSO 2: FILTRAGEM E ESCRITA PARALELA ---
+    std::cout << "Passo 2: Filtrando usuários e escrevendo arquivos temporários em paralelo..." << std::endl;
+    if (system("mkdir -p datasets 2>/dev/null") != 0) {}
+
+    threads.clear();
+    for (int i = 0; i < num_threads; i++) {
+        threads.emplace_back(filter_and_write_chunk, &chunks[i], &valid_movies, i);
     }
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // --- PASSO 3: CONCATENAÇÃO FINAL ---
+    std::cout << "Passo 3: Juntando arquivos para a saída final..." << std::endl;
+    concatenate_temp_files(num_threads);
+
+    munmap(file_data, sb.st_size); // Libera o arquivo mapeado
     
-    flush();
-    close(out_fd);
-    free(buffer);
-    
-    std::cout << "Pré-processamento concluído: " << written << " usuários escritos" << std::endl;
+    std::cout << "Pré-processamento concluído com sucesso." << std::endl;
+    // O número de usuários escritos não é mais trivial de contar, mas podemos omitir ou estimar se necessário.
+
     return 0;
+}
+
+
+// Implementação de find_ratings_file (sem alterações)
+const char* find_ratings_file() {
+    const char* possible_paths[] = {"ml-25m/ratings.csv", "datasets/ratings.csv", "ratings.csv"};
+    for (const char* path : possible_paths) {
+        if (access(path, F_OK) == 0) {
+            return path;
+        }
+    }
+    return nullptr;
 }

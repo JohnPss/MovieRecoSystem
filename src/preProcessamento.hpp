@@ -6,6 +6,7 @@
 #include <string>
 #include <chrono>
 #include <unordered_map>
+#include <unordered_set> // Adicionado
 #include <vector>
 #include <utility>
 #include <algorithm>
@@ -13,7 +14,6 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <immintrin.h>
 
 // Para Memory-Mapped Files (Unix/Linux)
 #include <sys/mman.h>
@@ -22,31 +22,49 @@
 #include <unistd.h>
 #include <cstdio>
 
-// --- Estruturas Ultra-Compactas ---
-#pragma pack(push, 1)
-struct CompactRating {
-    uint32_t movieId : 24;  // Suporta até 16M filmes
-    uint8_t rating;         // Rating * 10 (0-50)
+// --- Estruturas (sem alterações) ---
+struct Rating {
+    int movieId;
+    float rating;
     
-    CompactRating(uint32_t id, uint8_t r) : movieId(id), rating(r) {}
-};
-#pragma pack(pop)
-
-struct alignas(64) DataChunk {  // Alinhado em cache line
-    const char* start;
-    const char* end;
-    // Vetores planos para melhor cache
-    std::vector<uint32_t> user_ids;
-    std::vector<uint32_t> user_offsets;  // Onde começam os ratings de cada user
-    std::vector<CompactRating> all_ratings;
-    std::vector<std::pair<uint32_t, uint32_t>> movie_counts;  // movieId, count
+    Rating(int id, float r) : movieId(id), rating(r) {}
+    
+    bool operator<(const Rating& other) const {
+        if (movieId != other.movieId) {
+            return movieId < other.movieId;
+        }
+        return rating < other.rating;
+    }
 };
 
-// Tabela de lookup para parsing
-extern const uint8_t digit_lookup[256];
+struct DataChunk {
+    char* start;
+    char* end;
+    std::unordered_map<int, std::vector<Rating>> local_user_data;
+    std::unordered_map<int, int> local_movie_count;
+};
 
-// --- Funções Principais ---
-const char* find_ratings_file();
+// --- Funções Auxiliares de Parsing (sem alterações) ---
+inline bool is_digit(char c);
+inline int safe_fast_stoi(char*& p, char* end);
+inline float safe_fast_stof(char*& p, char* end);
+inline void safe_advance_to_next_line(char*& p, char* end);
+
+// --- Funções Principais e de Otimização ---
+
+// PASSO 1: Processa o chunk inicial para contagem (função original)
+void process_chunk(DataChunk* chunk);
+
+// PASSO 2: Nova função para filtrar dados e escrever em arquivos temporários
+void filter_and_write_chunk(const DataChunk* chunk, const std::unordered_set<int>* valid_movies, int thread_id);
+
+// PASSO 3: Nova função para juntar os arquivos temporários
+void concatenate_temp_files(int num_threads);
+
+// Função principal de orquestração
 int process_ratings_file();
+
+// Função utilitária (sem alterações)
+const char* find_ratings_file();
 
 #endif // PREPROCESSAMENTO_HPP
