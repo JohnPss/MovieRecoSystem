@@ -64,3 +64,6 @@ qrc_*
 # Other
 *.DS_Store
 
+meu
+
+.py

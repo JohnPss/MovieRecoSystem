@@ -21,37 +21,28 @@
 #include <unistd.h>
 #include <cstdio>
 
-// --- Estruturas ---
+// --- Estruturas Compactas ---
 struct Rating {
-    int movieId;
-    float rating;
+    uint32_t movieId;
+    uint8_t rating; // 0-50 (rating * 10)
     
-    Rating(int id, float r) : movieId(id), rating(r) {}
+    Rating(uint32_t id, uint8_t r) : movieId(id), rating(r) {}
     
-    // Operador de comparação para ordenação
     bool operator<(const Rating& other) const {
-        if (movieId != other.movieId) {
-            return movieId < other.movieId;
-        }
-        return rating < other.rating;
+        return movieId < other.movieId;
     }
 };
 
 struct DataChunk {
-    char* start;
-    char* end;
-    std::unordered_map<int, std::vector<Rating>> local_user_data;
-    std::unordered_map<int, int> local_movie_count;
+    const char* start;
+    const char* end;
+    // Arrays paralelos são mais cache-friendly
+    std::vector<uint32_t> user_ids;
+    std::vector<std::vector<Rating>> user_ratings;
+    std::unordered_map<uint32_t, uint32_t> movie_count;
 };
 
-// --- Funções Auxiliares ---
-inline bool is_digit(char c);
-inline int safe_fast_stoi(char*& p, char* end);
-inline float safe_fast_stof(char*& p, char* end);
-inline void safe_advance_to_next_line(char*& p, char* end);
-
 // --- Funções Principais ---
-void process_chunk(DataChunk* chunk);
 const char* find_ratings_file();
 int process_ratings_file();
 
