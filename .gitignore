@@ -64,3 +64,8 @@ qrc_*
 # Other
 *.DS_Store
 
+meu
+
+.py
+
+outcome/debug_recommendations.txt

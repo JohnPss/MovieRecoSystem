@@ -6,6 +6,7 @@
 #include <string>
 #include <chrono>
 #include <unordered_map>
+#include <unordered_set> // Adicionado
 #include <vector>
 #include <utility>
 #include <algorithm>
@@ -21,14 +22,13 @@
 #include <unistd.h>
 #include <cstdio>
 
-// --- Estruturas ---
+// --- Estruturas (sem alterações) ---
 struct Rating {
     int movieId;
     float rating;
     
     Rating(int id, float r) : movieId(id), rating(r) {}
     
-    // Operador de comparação para ordenação
     bool operator<(const Rating& other) const {
         if (movieId != other.movieId) {
             return movieId < other.movieId;
@@ -44,15 +44,27 @@ struct DataChunk {
     std::unordered_map<int, int> local_movie_count;
 };
 
-// --- Funções Auxiliares ---
+// --- Funções Auxiliares de Parsing (sem alterações) ---
 inline bool is_digit(char c);
 inline int safe_fast_stoi(char*& p, char* end);
 inline float safe_fast_stof(char*& p, char* end);
 inline void safe_advance_to_next_line(char*& p, char* end);
 
-// --- Funções Principais ---
+// --- Funções Principais e de Otimização ---
+
+// PASSO 1: Processa o chunk inicial para contagem (função original)
 void process_chunk(DataChunk* chunk);
-const char* find_ratings_file();
+
+// PASSO 2: Nova função para filtrar dados e escrever em arquivos temporários
+void filter_and_write_chunk(const DataChunk* chunk, const std::unordered_set<int>* valid_movies, int thread_id);
+
+// PASSO 3: Nova função para juntar os arquivos temporários
+void concatenate_temp_files(int num_threads);
+
+// Função principal de orquestração
 int process_ratings_file();
+
+// Função utilitária (sem alterações)
+const char* find_ratings_file();
 
 #endif // PREPROCESSAMENTO_HPP
