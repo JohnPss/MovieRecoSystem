@@ -29,7 +29,7 @@ inline int safe_fast_stoi(char*& p, char* end);
 inline float safe_fast_stof(char*& p, char* end);
 inline void safe_advance_to_next_line(char*& p, char* end);
 
-// --- Funções Principais e de Otimização ---
+
 
 void process_chunk(DataChunk* chunk);
 

@@ -13,7 +13,7 @@ uint64_t SimilarityCalculator::makeKey(uint32_t user1, uint32_t user2) const
 
 float SimilarityCalculator::calculateCosineSimilarity(uint32_t user1, uint32_t user2) const
 {
-    // Verifica cache
+    
     uint64_t key = makeKey(user1, user2);
     {
         lock_guard<mutex> lock(cacheMutex);

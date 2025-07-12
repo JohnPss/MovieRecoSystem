@@ -1,13 +1,13 @@
 #include "LSHIndex.hpp"
 
-// O include e o namespace para 'cout' e 'chrono' foram removidos.
+
 using namespace std;
 
 LSHIndex::LSHIndex() : rng(std::random_device{}())
 {
     tables.resize(Config::NUM_TABLES);
 
-    // Inicializa parâmetros das funções hash para cada tabela e band
+    
     bandHashParams.resize(Config::NUM_TABLES);
     for (int t = 0; t < Config::NUM_TABLES; t++)
     {
@@ -25,10 +25,10 @@ void LSHIndex::buildSignatures(
     const unordered_map<uint32_t, vector<pair<uint32_t, float>>> &userRatings,
     int numThreads)
 {
-    // Gerações de hash compartilhadas
+    
     auto hashFunctions = generateHashFunctions();
 
-    // Pré-computa hashes para todos os filmes únicos
+    
     unordered_set<uint32_t> allMovies;
     for (const auto &[userId, ratings] : userRatings)
     {
@@ -60,7 +60,7 @@ void LSHIndex::buildSignatures(
         userVector.emplace_back(userId, &ratings);
     }
 
-    // Processamento em paralelo
+    
     const size_t chunkSize = (userVector.size() + numThreads - 1) / numThreads;
     vector<future<vector<MinHashSignature>>> futures;
 
@@ -99,7 +99,7 @@ void LSHIndex::buildSignatures(
         }
     }
 
-    // Coleta resultados
+    
     {
         lock_guard<mutex> lock(indexMutex);
         for (auto &future : futures)

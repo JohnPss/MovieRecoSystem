@@ -25,7 +25,7 @@ private:
     {
         uint32_t a, b;
     };
-    std::vector<std::vector<HashParams>> bandHashParams; // [table][band]
+    std::vector<std::vector<HashParams>> bandHashParams; 
 
     mutable std::mutex indexMutex;
 

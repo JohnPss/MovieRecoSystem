@@ -256,7 +256,7 @@ int process_ratings_file()
     std::vector<DataChunk> chunks(num_threads);
     std::vector<std::thread> threads;
 
-    // --- PASSO 1: CONTAGEM PARALELA ---
+    
     for (int i = 0; i < num_threads; i++)
     {
         chunks[i].start = current_pos + (i * chunk_size);

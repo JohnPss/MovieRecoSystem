@@ -62,7 +62,6 @@ vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)
     return recommendations;
 }
 
-// ... as funções findCandidateUsers, calculateSimilarities, etc. permanecem as mesmas ...
 vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsers(
     uint32_t userId,
     const UserProfile &user)
@@ -119,7 +118,6 @@ vector<pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(
             futures.push_back(async(launch::async,
                                     [this, userId, candidateId]()
                                     {
-                                        // *** MUDANÇA: Aqui chamamos calculateCosineSimilarity ao invés de calculatePearsonCorrelation ***
                                         float sim = similarityCalc.calculateCosineSimilarity(userId, candidateId);
                                         return make_pair(candidateId, sim);
                                     }));
@@ -189,8 +187,7 @@ unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(
         auto popIt = moviePopularity.find(movieId);
         if (popIt != moviePopularity.end())
         {
-            // Boost baseado na popularidade (log-normalizado)
-            float popularity_boost = log(popIt->second + 1) / 15.0f; // Normaliza
+            float popularity_boost = log(popIt->second + 1) / 15.0f;
             score += popularity_boost * Config::POPULARITY_WEIGHT;
         }
     }
@@ -221,11 +218,9 @@ void RecommendationEngine::contentBasedBoost(
                         auto popIt = moviePopularity.find(movieId);
                         if (avgIt != movieAvgRatings.end() && popIt != moviePopularity.end())
                         {
-                            // *** MODIFICADO: Inclui POPULARITY_WEIGHT ***
                             float quality = avgIt->second / 5.0f;
                             float popularity = min(1.0f, static_cast<float>(log(popIt->second + 1) / 10.0));
 
-                            // NOVO: Boost combinado com peso de popularidade
                             float combined_boost = (0.3f * quality + 0.7f * popularity) * Config::CB_WEIGHT +
                                                    popularity * Config::POPULARITY_WEIGHT;
 
@@ -265,7 +260,7 @@ void RecommendationEngine::popularityFallback(
     {
         if (scores.find(popularMovies[i].first) == scores.end())
         {
-            scores[popularMovies[i].first] = popularMovies[i].second / 50.0f; // Era /100.0f
+            scores[popularMovies[i].first] = popularMovies[i].second / 50.0f; 
         }
     }
 }
@@ -350,8 +345,7 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
             }
         }
     }
-
-    // 6. Limita ao máximo de candidatos configurado.
+    
     if (highQualityCandidates.size() > Config::MAX_CANDIDATES)
     {
         highQualityCandidates.resize(Config::MAX_CANDIDATES);

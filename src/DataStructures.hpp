@@ -11,7 +11,7 @@ struct Movie
 
 struct UserProfile
 {
-    std::vector<std::pair<uint32_t, float>> ratings; // (movieId, rating)
+    std::vector<std::pair<uint32_t, float>> ratings; 
     float avgRating;
     uint32_t preferredGenres; 
 };
@@ -26,7 +26,7 @@ struct Recommendation
     {
     }
 
-    // Construtor que você já tinha
+    
     Recommendation(uint32_t id, float s) : movieId(id),
                                            score(s)
     {

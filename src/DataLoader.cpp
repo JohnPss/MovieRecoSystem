@@ -293,7 +293,7 @@ void DataLoader::Impl::loadMovies(const string &filename)
 
     string line;
     line.reserve(256);
-    std::getline(file, line); // Skip header
+    std::getline(file, line); 
 
     int genreCounter = 0;
     while (std::getline(file, line))
