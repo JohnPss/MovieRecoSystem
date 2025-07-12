@@ -1,4 +1,8 @@
-# 🎬 Sistema de Recomendação MovieLens
+#          🎬 Sistema de Recomendação MovieLens
+
+<div align='center'>
+<img src="assets/img.png" alt="Descrição" width="600" height="500"/>
+</div>
 
 <div align='center'>
 Algoritmos e Estruturas de Dados I <br>
@@ -688,7 +692,7 @@ Este projeto utiliza um `Makefile` para simplificar e padronizar os processos de
 
 Antes de compilar e executar o sistema, certifique-se de que os seguintes pré-requisitos estejam atendidos:
 
-- Base de Dados MovieLens 25M: Os arquivos brutos da base de dados, especialmente o `ratings.csv`, devem estar localizados no diretório `ml-25m/`. Caso ainda não os tenha, faça o download manual da base de dados MovieLens 25M através do repositório Kaggle, disponível em: [MovieLens 25M Dataset](https://www.kaggle.com/datasets/garymk/movielens-25m-dataset).
+- Base de Dados MovieLens 25M: Os arquivos brutos da base de dados, especialmente o `ratings.csv` e o `movies.csv`, devem estar localizados no diretório `ml-25m/`. Caso ainda não os tenha, faça o download manual da base de dados MovieLens 25M através do repositório Kaggle, disponível em: [MovieLens 25M Dataset](https://www.kaggle.com/datasets/garymk/movielens-25m-dataset).
 
 - Arquivo de Usuários para Exploração (`explore.dat`): Este arquivo deve ser criado manualmente por você e colocado no diretório `datasets`. Ele contém a lista de `usuario_ids` para os quais o sistema irá gerar recomendações personalizadas.
 
