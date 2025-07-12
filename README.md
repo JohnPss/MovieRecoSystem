@@ -1,5 +1,22 @@
 # 🎬 Sistema de Recomendação MovieLens
 
+<div align='center'>
+Algoritmos e Estruturas de Dados I <br>
+Engenharia de Computação <br>
+Prof. Michel Pires da Silva <br>
+CEFET-MG Campus V <br>
+2025/1  
+</div>
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++">
+  <img src="https://img.shields.io/badge/GCC-orange?style=for-the-badge&logo=gnu-compiler-collection&logoColor=white" alt="GCC">
+  <img src="https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Ubuntu">
+  <img src="https://img.shields.io/badge/Visual_Studio_Code-007ACC?style=for-the-badge&logo=visual-studio-code&logoColor=white" alt="Visual Studio Code">
+  <img src="https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Git">
+  <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
+  <img src="https://img.shields.io/badge/Kaggle-20BEFF?style=for-the-badge&logo=kaggle&logoColor=white" alt="Kaggle">
+<img src="https://img.shields.io/badge/-Makefile-red?style=for-the-badge&logo=gnu-make&logoColor=white" alt="Makefile"></p>
+
 <details>
 <summary><h2>📋 Índice</h2></summary>
 
@@ -32,7 +49,7 @@
       - [Estruturas de Dados (Definidas em `DataStructures.hpp` e outras classes)](#estruturas-de-dados-definidas-em-datastructureshpp-e-outras-classes)
     - [📝 Funções Implementadas](#-funções-implementadas)
       - [`main.cpp`](#maincpp)
-      - [`preProcessamento.cpp`](#preprocessamentocpp)
+      - [`preProcessament.cpp`](#preprocessamentcpp)
       - [`DataLoader.cpp`](#dataloadercpp)
       - [`LSHIndex.cpp`](#lshindexcpp)
       - [`SimilarityCalculator.cpp`](#similaritycalculatorcpp)
