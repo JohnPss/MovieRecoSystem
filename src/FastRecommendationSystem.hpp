@@ -47,4 +47,4 @@ private:
     void printRecommendations(uint32_t userId, const std::vector<Recommendation> &recommendations);
 };
 
-#endif // FAST_RECOMMENDATION_SYSTEM_H
+#endif 

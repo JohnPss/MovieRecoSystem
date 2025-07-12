@@ -39,7 +39,6 @@ void FastRecommendationSystem::loadData()
 
     lshIndex->buildSignatures(*userRatingsForLSH, Config::NUM_THREADS);
     lshIndex->indexSignatures();
-    lshIndex->printStatistics();
 }
 
 void FastRecommendationSystem::processRecommendations(const string &filename)

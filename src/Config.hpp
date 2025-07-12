@@ -74,4 +74,4 @@ namespace Config
    inline static const std::string OUTPUT_FILE = "outcome/output.dat";  // Arquivo de saída para salvar as recomendações geradas.
 }
 
-#endif // CONFIG_HPP
+#endif 

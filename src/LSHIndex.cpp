@@ -292,8 +292,3 @@ vector<pair<uint32_t, uint32_t>> LSHIndex::generateHashFunctions()
 
     return functions;
 }
-
-void LSHIndex::printStatistics() const
-{
-    // O corpo desta função foi esvaziado para remover as impressões de estatísticas.
-}

@@ -1,8 +1,6 @@
 #include "preProcessament.hpp"
 
 
-// --- Funções Auxiliares de Parsing Otimizadas (sem alterações) ---
-
 inline bool is_digit(char c)
 {
     return c >= '0' && c <= '9';
@@ -67,7 +65,6 @@ inline void safe_advance_to_next_line(char *&p, char *end)
         p++;
 }
 
-// --- PASSO 1: Processamento de Chunks para Contagem (sem alterações) ---
 void process_chunk(DataChunk *chunk)
 {
     char *current_pos = chunk->start;
@@ -110,16 +107,11 @@ void process_chunk(DataChunk *chunk)
     }
 }
 
-// --- PASSO 2: Nova Função para Filtrar e Escrever em Paralelo ---
 void filter_and_write_chunk(const DataChunk *chunk, const std::unordered_set<int> *valid_movies, int thread_id)
 {
     std::string temp_filename = "datasets/input.dat.tmp." + std::to_string(thread_id);
     FILE *output_file = fopen(temp_filename.c_str(), "w");
-    if (!output_file)
-    {
-        // Mensagem de erro removida
-        return;
-    }
+    if (!output_file) { return; }
 
     const size_t BUFFER_SIZE = 4 * 1024 * 1024;
     std::vector<char> write_buffer(BUFFER_SIZE);
@@ -196,16 +188,11 @@ void filter_and_write_chunk(const DataChunk *chunk, const std::unordered_set<int
     fclose(output_file);
 }
 
-// --- PASSO 3: Função para Concatenar Arquivos Temporários ---
 void concatenate_temp_files(int num_threads)
 {
     const char *final_filename = "datasets/input.dat";
     FILE *final_output = fopen(final_filename, "wb");
-    if (!final_output)
-    {
-        // Mensagem de erro removida
-        return;
-    }
+    if (!final_output){ return; }
 
     std::vector<char> concat_buffer(4 * 1024 * 1024);
 
@@ -227,7 +214,6 @@ void concatenate_temp_files(int num_threads)
     fclose(final_output);
 }
 
-// --- Função Principal de Orquestração (Reestruturada) ---
 int process_ratings_file()
 {
     std::ios_base::sync_with_stdio(false);
@@ -236,7 +222,6 @@ int process_ratings_file()
     const char *filename = find_ratings_file();
     if (!filename)
     {
-        // Mensagem de erro removida
         return 1;
     }
 
@@ -283,7 +268,6 @@ int process_ratings_file()
         t.join();
     }
 
-    // --- MERGE E IDENTIFICAÇÃO DE FILMES VÁLIDOS ---
     std::unordered_map<int, int> movie_count;
     movie_count.reserve(60000);
     for (const auto &chunk : chunks)
@@ -305,7 +289,6 @@ int process_ratings_file()
     }
     movie_count.clear();
 
-    // --- PASSO 2: FILTRAGEM E ESCRITA PARALELA ---
     if (system("mkdir -p datasets 2>/dev/null") != 0)
     {
     }
@@ -320,17 +303,12 @@ int process_ratings_file()
         t.join();
     }
 
-    // --- PASSO 3: CONCATENAÇÃO FINAL ---
     concatenate_temp_files(num_threads);
 
     munmap(file_data, sb.st_size);
 
-    // Mensagem de sucesso removida
-
     return 0;
 }
-
-// Implementação de find_ratings_file (sem alterações)
 const char *find_ratings_file()
 {
     const char *possible_paths[] = {"ml-25m/ratings.csv", "datasets/ratings.csv", "ratings.csv"};

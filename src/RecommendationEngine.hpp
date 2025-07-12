@@ -34,33 +34,27 @@ public:
         SimilarityCalculator &sc,
         LSHIndex &lshIndex);
 
-    // Gera recomendações para um usuário
     std::vector<Recommendation> recommendForUser(uint32_t userId);
 
 private:
-    // Encontra usuários candidatos similares
     std::vector<std::pair<uint32_t, int>> findCandidateUsers(
         uint32_t userId,
         const UserProfile &user);
 
-    // Calcula similaridades com candidatos
     std::vector<std::pair<uint32_t, float>> calculateSimilarities(
         uint32_t userId,
         const std::vector<std::pair<uint32_t, int>> &candidates);
 
-    // Gera scores usando collaborative filtering
     std::unordered_map<uint32_t, float> collaborativeFiltering(
         const UserProfile &user,
         const std::vector<std::pair<uint32_t, float>> &similarUsers,
         const std::unordered_set<uint32_t> &watchedMovies);
 
-    // Adiciona scores baseados em conteúdo
     void contentBasedBoost(
         const UserProfile &user,
         const std::unordered_set<uint32_t> &watchedMovies,
         std::unordered_map<uint32_t, float> &scores);
 
-    // Adiciona filmes populares como fallback
     void popularityFallback(
         const std::unordered_set<uint32_t> &watchedMovies,
         std::unordered_map<uint32_t, float> &scores);
@@ -70,4 +64,4 @@ private:
         const UserProfile &user);
 };
 
-#endif // RECOMMENDATION_ENGINE_H
+#endif 

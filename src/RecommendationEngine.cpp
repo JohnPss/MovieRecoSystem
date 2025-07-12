@@ -2,7 +2,6 @@
 
 using namespace std;
 
-// O construtor e outras funções permanecem os mesmos...
 RecommendationEngine::RecommendationEngine(
     const unordered_map<uint32_t, UserProfile> &u,
     const unordered_map<uint32_t, Movie> &m,
@@ -271,16 +270,13 @@ void RecommendationEngine::popularityFallback(
     }
 }
 
-// *** MUDANÇA: Função com o novo fallback leve e eficiente ***
 vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
     uint32_t userId,
     const UserProfile &user)
 {
-    // 1. Pega um número maior de candidatos potenciais do LSH para ter material para o fallback.
     vector<uint32_t> lshCandidates = lshIndex.findSimilarCandidates(userId, Config::MAX_CANDIDATES * 3);
 
-    // 2. Calcula filmes em comum para TODOS os candidatos retornados pelo LSH.
-    //    Esta lista armazena todos os candidatos, mesmo os de "baixa qualidade".
+
     vector<pair<uint32_t, int>> allFoundCandidates;
     allFoundCandidates.reserve(lshCandidates.size());
 
@@ -306,14 +302,12 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
                 j++;
             }
         }
-        // Adiciona todos que tiverem pelo menos 1 filme em comum
         if (commonCount > 0)
         {
             allFoundCandidates.push_back({candidateId, commonCount});
         }
     }
 
-    // 3. Cria a lista principal apenas com candidatos de ALTA qualidade.
     vector<pair<uint32_t, int>> highQualityCandidates;
     for (const auto &candidate : allFoundCandidates)
     {
@@ -323,24 +317,18 @@ vector<pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(
         }
     }
 
-    // 4. Ordena a lista de alta qualidade por número de filmes em comum.
     sort(highQualityCandidates.begin(), highQualityCandidates.end(),
          [](const auto &a, const auto &b)
          { return a.second > b.second; });
 
-    // 5. *** O NOVO FALLBACK LEVE ***
-    // Se, após o filtro rigoroso, tivermos muito poucos candidatos,
-    // preenchemos a lista com os melhores candidatos de "qualidade média".
     const size_t MINIMUM_CANDIDATES = 20;
     if (highQualityCandidates.size() < MINIMUM_CANDIDATES)
     {
-        // Ordena a lista *completa* para encontrar os melhores entre os que sobraram.
         sort(allFoundCandidates.begin(), allFoundCandidates.end(),
              [](const auto &a, const auto &b)
              { return a.second > b.second; });
 
-        // Adiciona os melhores candidatos da lista completa (que ainda não estão na lista final)
-        // até atingir o mínimo desejado.
+
         for (const auto &fallbackCandidate : allFoundCandidates)
         {
             if (highQualityCandidates.size() >= MINIMUM_CANDIDATES)
