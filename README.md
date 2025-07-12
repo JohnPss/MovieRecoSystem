@@ -321,8 +321,8 @@ A seguir, a estrutura do diretório do projeto:
     ├── Main.cpp                 
     ├── preProcessament.cpp       
     ├── preProcessament.hpp       
-    ├── Recommendation.cpp        
-    ├── Recommendation.hpp
+    ├── RecommendationEngine.cpp        
+    ├── RecommendationEngine.hpp
     ├── SimilarityCalculator.cpp  
     └── SimilarityCalculator.hpp
 
@@ -365,7 +365,7 @@ A seguir, a estrutura do diretório do projeto:
 
     - `preProcessament.cpp/.hpp`: Contém as funções responsáveis pelo processamento inicial da base de dados bruta (`ml-25m/ratings.csv e outros`), incluindo filtragem de usuários/filmes, remoção de duplicatas e geração do `input.dat`.
 
-    - `Recommendation.cpp/.hpp`: Abriga a lógica central do algoritmo de recomendação, gerenciando a busca por vizinhos, a agregação de recomendações e a priorização dos filmes a serem sugeridos.
+    - `RecommendationEngine.cpp/.hpp`: Abriga a lógica central do algoritmo de recomendação, gerenciando a busca por vizinhos, a agregação de recomendações e a priorização dos filmes a serem sugeridos.
 
     - `SimilarityCalculator.cpp/.hpp`: Implementa as métricas de similaridade (Euclidiana, Cosseno, Jaccard) utilizadas para quantificar a afinidade entre usuários.
       
@@ -381,7 +381,7 @@ A implementação do sistema de recomendação MovieLens faz uso extensivo da St
     * `RecommendationEngine.hpp`: Define a lógica central para a geração de recomendações, combinando filtragem colaborativa, conteúdo e popularidade.
     * `SimilarityCalculator.hpp`: Responsável por calcular a similaridade entre usuários, incluindo a implementação da similaridade do cosseno e um mecanismo de cache.
     * `FastRecommendationSystem.hpp`: Orquestra as diferentes etapas do sistema de recomendação, integrando os módulos de carregamento, LSH e geração de recomendações.
-    * `preProcessamento.hpp`: Contém as funções para o pré-processamento inicial do arquivo `ratings.csv`, incluindo filtragem e formatação para `input.dat`.
+    * `preProcessament.hpp`: Contém as funções para o pré-processamento inicial do arquivo `ratings.csv`, incluindo filtragem e formatação para `input.dat`.
 
 * **Bibliotecas Padrão do C++ (STL e outras):**
   
@@ -486,7 +486,7 @@ O sistema de recomendação é estruturado em classes e módulos, cada um conten
     * **Função:** Ponto de entrada principal do programa.
     * **Funcionalidade:** Gerencia o fluxo de execução do sistema. Inicia o pré-processamento do arquivo de avaliações, carrega os dados e constrói o índice LSH, e, por fim, aciona o processo de geração de recomendações para os usuários do arquivo `explore.dat`. Realiza a medição e impressão dos tempos de execução para cada etapa e o tempo total do sistema.
 
-#### `preProcessamento.cpp`
+#### `preProcessament.cpp`
 
 * `inline bool is_digit(char c)`
     * **Função:** Auxiliar para verificar se um caractere é um dígito.
@@ -586,7 +586,7 @@ O sistema de recomendação é estruturado em classes e módulos, cada um conten
     * **Funcionalidade:** Esta é a versão mais simples de encontrar candidatos, iterando sobre todos os filmes avaliados pelo usuário-alvo e seus avaliadores. É menos eficiente para grandes datasets, e foi substituída por `findCandidateUsersLSH`. (Note: No seu `recommendForUser`, a chamada é para `findCandidateUsersLSH`.)
 * `std::vector<std::pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(uint32_t userId, const UserProfile &user)`
     * **Função:** Encontra usuários candidatos para a filtragem colaborativa usando LSH.
-    * **Funcionalidade:** Consulta o `lshIndex` para obter um número expandido de candidatos potenciais. Para esses candidatos, calcula o número de itens em comum. Filtra para obter candidatos de "alta qualidade" (`MIN_COMMON_ITEMS`). Se o número de candidatos de alta qualidade for insuficiente (`MINIMUM_CANDIDATES`), implementa um fallback leve, adicionando os melhores candidatos da lista completa (mesmo com menos itens em comum) para garantir um pool mínimo.
+    * **Funcionalidade:** Consulta o `lshIndex` para obter um número expandido de candidatos potenciais. Para esses candidatos, calcula o número de itens em comum. Filtra para obter candidatos de "alta qualidade" (`MIN_COMMON_ITEMS`). Se o número de candidatos de alta qualidade for insuficiente (`MIN_CANDIDATES_FOR_CF`), implementa um fallback leve, adicionando os melhores candidatos da lista completa (mesmo com menos itens em comum) para garantir um pool mínimo.
 * `std::vector<std::pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(uint32_t userId, const std::vector<std::pair<uint32_t, int>> &candidates)`
     * **Função:** Calcula a similaridade entre o usuário-alvo e a lista de usuários candidatos.
     * **Funcionalidade:** Paraleliza o cálculo da similaridade do cosseno para lotes de candidatos (`BATCH_SIZE`) usando `std::async`. Filtra os usuários cuja similaridade está abaixo de `MIN_SIMILARITY` e retorna os usuários mais similares, limitados por `MAX_SIMILAR_USERS`.
