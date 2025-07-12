@@ -28,6 +28,7 @@ CEFET-MG Campus V <br>
   - [📝 Introdução](#introdução)
   - [🎯 Objetivos](#objetivos)
     - [Objetivo Geral](#objetivo-geral)
+      - [Métricas de Desempenho](#métricas-de-desempenho)
     - [Objetivos Específicos](#objetivos-específicos)
   - [📚 Fundamentação Teórica](#-fundamentação-teórica)
     - [Sistemas de Recomendação](#sistemas-de-recomendação)
@@ -37,7 +38,6 @@ CEFET-MG Campus V <br>
       - [Sistema Híbrido](#sistema-híbrido)
     - [Similaridade do Cosseno (Cosine Similarity)](#similaridade-do-cosseno-cosine-similarity)
     - [Locality Sensitive Hashing (LSH)](#locality-sensitive-hashing-lsh)
-    - [Métricas de Desempenho](#métricas-de-desempenho)
   - [🔬 Modelagem da Aplicação](#-modelagem-da-aplicação)
     - [Fluxo de Execução do Sistema](#fluxo-de-execução-do-sistema)
     - [📊 Estruturas de Dados](#-estruturas-de-dados)
@@ -84,7 +84,7 @@ Inspirando-nos em conceitos de algoritmos de classificação e similares, este p
 Para este estudo, utilizamos a vasta base de dados:
 **[MovieLens 25M Dataset](https://www.kaggle.com/datasets/garymk/movielens-25m-dataset)**. 
 
-Este dataset é amplamente reconhecido na área de sistemas de recomendação e contém um grande volume de avaliações de filmes por usuários, além de metadados sobre os filmes. O arquivo principal utilizado é o `ratings.csv`, mas outras informações complementares foram exploradas para enriquecer as recomendações.
+Este dataset é amplamente reconhecido na área de sistemas de recomendação e contém um grande volume de avaliações de filmes por usuários, além de metadados sobre os filmes. O arquivo principal utilizado é o `ratings.csv` e o `movies.csv`, mas outras informações complementares foram exploradas para enriquecer as recomendações.
 
 O pré-processamento dos dados seguiu critérios específicos para garantir a qualidade da entrada:
 
@@ -137,7 +137,6 @@ A avaliação do nosso sistema de recomendação é realizada com base nos segui
   Medir o tempo médio de execução por usuário, o consumo de memória e a qualidade das recomendações geradas, buscando atender aos critérios de eficiência computacional e relevância definidos.
 
 
----
 
 ## 📚 Fundamentação Teórica
 
@@ -307,7 +306,6 @@ As otimizações implementadas visaram tanto a eficiência do pré-processamento
     * `POPULARITY_BOOST_WEIGHT = 1.5f`: Novo peso para impulsionar a popularidade em cenários de fallback.
 
 
----
 
 ## 📝 Metodologia
 
@@ -427,7 +425,6 @@ A implementação do sistema de recomendação MovieLens faz uso extensivo da St
     * `charconv` (C++17): Utilizada para conversão de strings para tipos numéricos (`std::from_chars`) e de tipos numéricos para strings (`std::to_chars`) de forma otimizada, sem alocações dinâmicas ou exceções, contribuindo para a alta performance do pré-processamento.
     * `random`: Para geração de números aleatórios de forma eficiente, usada na inicialização das funções hash para o LSH.
 
----
 
 ### ⚙️ Definições e Estruturas Usadas
 
@@ -461,8 +458,6 @@ O arquivo `Config.hpp` centraliza os parâmetros configuráveis do sistema, perm
     * `POPULARITY_BOOST_WEIGHT`: Peso para o boost de popularidade em fallbacks (e.g., `1.5f`).
 * **Caminhos de Arquivo:** Constantes para os nomes e localizações dos arquivos de entrada e saída (e.g., `USERS_FILE`, `MOVIES_FILE`, `RATINGS_FILE`, `OUTPUT_FILE`, `DEBUG_OUTPUT_FILE`).
 
-  ---
-
 ### Estruturas de Dados (Definidas em `DataStructures.hpp` e outras classes)
 
 As estruturas abaixo modelam as entidades e dados fundamentais do sistema.
@@ -495,7 +490,6 @@ As estruturas abaixo modelam as entidades e dados fundamentais do sistema.
     * `local_movie_count`: Um `unordered_map` local para contagem de avaliações por filme dentro de um chunk.
 * `struct ThreadData`: (Definida em `DataLoader.cpp`)
     * Estrutura alinhada (`alignas(64)`) para evitar "false sharing" em operações paralelas de carregamento de dados. Contém `unordered_map`s locais para usuários, `movieToUsers`, `movieSums`, `movieCounts`, além de somas e contagens de ratings para agregação.
----
 
 ### 📝 Funções Implementadas
 
@@ -642,7 +636,6 @@ O sistema de recomendação é estruturado em classes e módulos, cada um conten
     * **Função:** Imprime as recomendações geradas para um usuário.
     * **Funcionalidade:** Escreve as recomendações no arquivo `output.dat` no formato exigido pelo trabalho. Adicionalmente, para fins de depuração, escreve um formato mais detalhado (com títulos de filmes e scores) no `debug_recommendations.txt`.
 
----
 
 
 ## 🏁 Conclusão
@@ -736,7 +729,7 @@ Este comando fará com que o programa:
 
 
 
----
+
 
 # 👥 Equipe de Desenvolvimento
 
@@ -744,7 +737,7 @@ Este comando fará com que o programa:
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=6366F1&center=true&vCenter=true&width=400&lines=Nossa+Equipe+de+Desenvolvedores;Trabalhando+juntos+para+inovar!" alt="Typing SVG" />
 </div>
 
----
+
 
 ## 🚀 **Nossos Desenvolvedores**
 
@@ -806,7 +799,7 @@ Este comando fará com que o programa:
     </td>
   </tr>
 </table>
----
+
 
 ## 📊 **Estatísticas da Equipe**
 
@@ -816,7 +809,7 @@ Este comando fará com que o programa:
   <img src="https://img.shields.io/github/commit-activity/t/JohnPss/MovieRecoSystem?style=for-the-badge&logo=git&label=Total%20Commits" alt="Total de commits">
 </div>
 
----
+
 
 ## 🤝 **Sobre Nossa Colaboração**
 
