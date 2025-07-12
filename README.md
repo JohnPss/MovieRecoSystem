@@ -61,6 +61,62 @@ O objetivo geral deste trabalho é desenvolver e otimizar um sistema de recomend
 - **Avaliar o desempenho e a qualidade das recomendações:**  
   Medir o tempo médio de execução por usuário, o consumo de memória e a qualidade das recomendações geradas, buscando atender aos critérios de eficiência computacional e relevância definidos.
 
+
+---
+
+## 📚 Fundamentação Teórica
+
+O desenvolvimento de um sistema de recomendação eficiente exige a compreensão e aplicação de diversos conceitos fundamentais da área de sistemas de informação e aprendizado de máquina. Esta seção explora as bases teóricas que sustentam a arquitetura e as otimizações implementadas no presente trabalho.
+
+### Sistemas de Recomendação
+
+Sistemas de recomendação são ferramentas de filtragem de informação que visam prever as preferências de um usuário por um item e sugerir os itens mais relevantes para ele. Eles são amplamente utilizados em plataformas de e-commerce, streaming de mídia e redes sociais para personalizar a experiência do usuário, aumentar o engajamento e impulsionar o consumo de conteúdo. [cite_start]O objetivo principal é ajudar os usuários a descobrir novos itens que eles provavelmente gostarão, superando o problema da sobrecarga de informação[cite: 1].
+
+### Abordagens de Recomendação
+
+No contexto deste projeto, utilizamos uma abordagem híbrida, combinando os pontos fortes de diferentes paradigmas:
+
+#### Filtragem Colaborativa (Collaborative Filtering - CF)
+
+A Filtragem Colaborativa é uma das abordagens mais populares em sistemas de recomendação. Ela opera sob o princípio de que usuários com gostos semelhantes no passado continuarão a ter gostos semelhantes no futuro. Existem duas subcategorias principais:
+* **User-Based CF:** Recomenda itens que usuários similares (vizinhos) gostaram no passado. O sistema identifica usuários com perfis de avaliação semelhantes ao do usuário-alvo e usa as avaliações desses vizinhos para prever a preferência do usuário-alvo por itens não vistos. Esta é a abordagem de CF central no nosso sistema.
+* **Item-Based CF:** Recomenda itens que são semelhantes aos itens que o usuário gostou no passado.
+
+#### Recomendação Baseada em Conteúdo (Content-Based - CB)
+
+A Filtragem Baseada em Conteúdo sugere itens que são semelhantes aos itens que o usuário demonstrou interesse no passado. Diferentemente da CF, a CB não depende das avaliações de outros usuários, mas sim das características dos próprios itens e do perfil de preferência construído para o usuário. Em nosso sistema, isso é aplicado através da identificação dos gêneros de filmes preferidos pelo usuário e do impulsionamento de filmes desses gêneros.
+
+#### Sistema Híbrido
+
+Sistemas de recomendação híbridos combinam duas ou mais abordagens de recomendação para superar as limitações individuais de cada uma (e.g., o problema do "cold start" ou esparsidade de dados na CF, ou a falta de diversidade na CB). Nosso sistema é híbrido, pois integra o CF (via similaridade de usuários), o CB (via preferências de gênero) e um componente de popularidade, visando uma recomendação mais robusta e completa.
+
+### Similaridade do Cosseno (Cosine Similarity)
+
+A Similaridade do Cosseno é uma métrica comum para medir a semelhança entre dois vetores não-nulos em um espaço de produtos internos. Ela mede o cosseno do ângulo entre os vetores, com valores que variam de -1 (exatamente opostos) a 1 (exatamente iguais), sendo 0 indicativo de ortogonalidade (sem correlação). Em sistemas de recomendação, é frequentemente utilizada para calcular a similaridade entre perfis de usuários ou itens, tratando suas avaliações como vetores em um espaço multidimensional. É particularmente eficaz para dados esparsos, onde nem todos os usuários avaliaram todos os itens.
+
+A fórmula geral da similaridade do cosseno entre dois vetores $A$ e $B$ é:
+
+**$$\cos(\theta) = \frac{A \cdot B}{||A|| \cdot ||B||} = \frac{\sum_{i=1}^{n} A_i B_i}{\sqrt{\sum_{i=1}^{n} A_i^2} \sqrt{\sum_{i=1}^{n} B_i^2}}$$**
+
+Em nosso sistema, $A_i$ e $B_i$ representam as avaliações de dois usuários para um filme $i$ em comum.
+
+### Locality Sensitive Hashing (LSH)
+
+Locality Sensitive Hashing (LSH) é uma técnica probabilística para busca eficiente de vizinhos mais próximos em espaços de alta dimensionalidade. O conceito central é "hashear" itens semelhantes para os mesmos "buckets" com alta probabilidade, enquanto itens diferentes caem em buckets diferentes. Isso permite que a busca por similaridade seja reduzida a uma busca por igualdade de hash.
+
+No contexto de sistemas de recomendação, o LSH é utilizado para:
+1.  **Redução de Dimensionalidade (MinHash):** Os conjuntos de itens avaliados por usuários são convertidos em "assinaturas" compactas (MinHash signatures). A similaridade entre as assinaturas (Jaccard Similarity) é uma boa estimativa da similaridade Jaccard entre os conjuntos originais de itens.
+2.  **Indexação (Bands e Tables):** Cada assinatura MinHash é dividida em várias "bandas". Múltiplas tabelas hash são criadas, e para cada tabela, as bandas da assinatura são "hasheadas" em um bucket. Se duas assinaturas são semelhantes, é provável que pelo menos uma de suas bandas colida no mesmo bucket em alguma tabela.
+
+A configuração do LSH (número de funções hash, bandas e tabelas) é crucial para equilibrar o *recall* (encontrar todos os similares) e a *precisão* (evitar falsos positivos). Nosso sistema utiliza uma configuração otimizada para maximizar as colisões entre usuários verdadeiramente similares.
+
+### Métricas de Desempenho
+
+A avaliação do nosso sistema de recomendação é realizada com base nos seguintes critérios, conforme as diretrizes do trabalho:
+* **Tempo de Execução:** Menor tempo médio de execução, medido em segundos, para todo o processo de recomendação, com um limite de 2.5 segundos por recomendação/usuário.
+* **Qualidade da Recomendação:** Avaliação da cobertura (diversidade de recomendações) e precisão (relevância das recomendações).
+* **Consumo de Memória:** Avaliado através de medições para garantir a eficiência do uso de recursos.
+
 ## 🔬 Modelagem da Aplicação
 
 Partindo dos objetivos de desenvolver um sistema de recomendação eficiente para a base de dados MovieLens, nossa modelagem buscou equilibrar a qualidade das recomendações com o desempenho computacional. Para isso, adotamos uma arquitetura modular em C++, aproveitando as características da linguagem para processar grandes volumes de dados e otimizar operações críticas. A escolha do C++ foi motivada por seu desempenho, controle de baixo nível e a riqueza de sua Standard Template Library (STL), que oferece estruturas de dados otimizadas e flexíveis.
@@ -172,5 +228,267 @@ As otimizações implementadas visaram tanto a eficiência do pré-processamento
     * Pesos Otimizados para o Sistema Híbrido: `CF_WEIGHT` e `CB_WEIGHT` ajustados, com a introdução de um `POPULARITY_WEIGHT = 3.0f` para impulsionar a relevância da popularidade.
     * `POPULARITY_BOOST_WEIGHT = 1.5f`: Novo peso para impulsionar a popularidade em cenários de fallback.
 
+
 ---
+
+## 📝 Funções Implementadas
+
+O sistema de recomendação é estruturado em classes e módulos, cada um contendo funções específicas que orquestram o fluxo de dados, desde o pré-processamento até a geração de recomendações. A seguir, são apresentadas as principais funções e suas funcionalidades, organizadas por classe:
+
+### `main.cpp`
+
+* `int main(int argc, char *argv[])`
+    * **Função:** Ponto de entrada principal do programa.
+    * **Funcionalidade:** Gerencia o fluxo de execução do sistema. Inicia o pré-processamento do arquivo de avaliações, carrega os dados e constrói o índice LSH, e, por fim, aciona o processo de geração de recomendações para os usuários do arquivo `explore.dat`. Realiza a medição e impressão dos tempos de execução para cada etapa e o tempo total do sistema.
+
+### `preProcessamento.cpp`
+
+* `inline bool is_digit(char c)`
+    * **Função:** Auxiliar para verificar se um caractere é um dígito.
+    * **Funcionalidade:** Utilizada internamente para otimizar o parsing de números.
+* `inline int safe_fast_stoi(char*& p, char* end)`
+    * **Função:** Auxiliar para converter uma sequência de caracteres (string) para um inteiro de forma otimizada.
+    * **Funcionalidade:** Realiza o parsing de IDs de forma manual e eficiente, sem alocações dinâmicas ou tratamento de exceções, avançando o ponteiro de leitura `p`.
+* `inline float safe_fast_stof(char*& p, char* end)`
+    * **Função:** Auxiliar para converter uma sequência de caracteres (string) para um float de forma otimizada.
+    * **Funcionalidade:** Similar a `safe_fast_stoi`, mas para números de ponto flutuante, utilizada para os ratings.
+* `inline void safe_advance_to_next_line(char*& p, char* end)`
+    * **Função:** Auxiliar para avançar o ponteiro de leitura para o início da próxima linha em um buffer de caracteres.
+    * **Funcionalidade:** Usada durante o parsing de arquivos mapeados em memória para pular para a próxima linha de forma segura e eficiente.
+* `void process_chunk(DataChunk* chunk)`
+    * **Função:** Processa um bloco (chunk) de dados do arquivo de avaliações em paralelo.
+    * **Funcionalidade:** Lê as avaliações de um chunk específico, extrai `userId`, `movieId` e `rating`, e acumula dados localmente (`local_user_data`, `local_movie_count`) para posterior agregação global. Lida com o cabeçalho e linhas malformadas.
+* `void filter_and_write_chunk(const std::unordered_set<int>* valid_movies, int thread_id)`
+    * **Função:** Filtra os dados processados por um chunk e escreve em um arquivo temporário.
+    * **Funcionalidade:** Para cada usuário no chunk, mantém apenas as avaliações para `valid_movies` (filmes que passaram no filtro de popularidade global). Se o usuário resultante tiver pelo menos 50 avaliações válidas, suas avaliações são formatadas e escritas em um arquivo temporário específico da thread, usando um buffer de escrita otimizado.
+* `void concatenate_temp_files(int num_threads)`
+    * **Função:** Concatena todos os arquivos temporários gerados pelas threads em um único arquivo final (`input.dat`).
+    * **Funcionalidade:** Abre o arquivo de saída final, lê sequencialmente cada arquivo temporário gerado pelas threads e escreve seu conteúdo no arquivo final, garantindo que o `input.dat` esteja completo e correto. Os arquivos temporários são então removidos.
+* `int process_ratings_file()`
+    * **Função:** Função principal do módulo de pré-processamento.
+    * **Funcionalidade:** Orquestra todo o processo de pré-processamento. Mapeia o arquivo `ratings.csv` para a memória, divide-o em chunks, inicia threads para `process_chunk` (contagem), depois threads para `filter_and_write_chunk` (filtragem e escrita), e finalmente chama `concatenate_temp_files`.
+* `const char* find_ratings_file()`
+    * **Função:** Localiza o arquivo `ratings.csv` em caminhos predefinidos.
+    * **Funcionalidade:** Retorna o caminho completo para o arquivo `ratings.csv` se encontrado, ou `nullptr` caso contrário.
+
+### `DataLoader.cpp`
+
+* `DataLoader::DataLoader(...)`
+    * **Função:** Construtor da classe `DataLoader`.
+    * **Funcionalidade:** Inicializa as referências aos mapas e variáveis globais que serão preenchidas com os dados carregados (usuários, filmes, mapeamentos, médias, popularidade).
+* `void DataLoader::loadRatings(const string &filename)`
+    * **Função:** Carrega e processa as avaliações do arquivo `input.dat`.
+    * **Funcionalidade:** Mapeia o arquivo pré-processado para a memória. Utiliza `std::from_chars` e processamento multithread (com `std::thread` e `alignas(64)` para `ThreadData`) para ler e parsear as avaliações de forma eficiente, populando `users` (com `UserProfile`), `movieToUsers`, `movieAvgRatings` e `moviePopularity`. Calcula a `globalAvgRating`.
+* `void DataLoader::loadMovies(const string &filename)`
+    * **Função:** Carrega os metadados dos filmes do arquivo `movies.csv`.
+    * **Funcionalidade:** Lê o arquivo `movies.csv`, parseia o ID, título e gêneros de cada filme. Popula os mapas `movies`, `genreToId` e `genreToMovies`. Após carregar os filmes, chama `calculateUserPreferences`.
+* `void DataLoader::calculateUserPreferences()`
+    * **Função:** Calcula os gêneros preferidos de cada usuário.
+    * **Funcionalidade:** Itera sobre todos os usuários e suas avaliações. Para filmes avaliados positivamente (`>= Config::MIN_RATING`), acumula um "score" para cada gênero. Ordena os gêneros por score e define a máscara de bits `preferredGenres` para os 5 gêneros mais preferidos do usuário. Esta função também é paralelizada para grandes bases de usuários.
+* `std::vector<uint32_t> DataLoader::loadUsersToRecommend(const string &filename)`
+    * **Função:** Carrega a lista de IDs de usuários para os quais o sistema deve gerar recomendações.
+    * **Funcionalidade:** Lê o arquivo `explore.dat` e retorna um vetor de `userIds`.
+
+### `LSHIndex.cpp`
+
+* `LSHIndex::LSHIndex()`
+    * **Função:** Construtor da classe `LSHIndex`.
+    * **Funcionalidade:** Inicializa o gerador de números aleatórios (`rng`) e redimensiona o vetor de tabelas hash (`tables`). Inicializa os parâmetros (`a`, `b`) para as funções de hash das bandas, que serão usadas para hashing em cada tabela LSH.
+* `void LSHIndex::buildSignatures(const unordered_map<uint32_t, vector<pair<uint32_t, float>>> &userRatings, int numThreads)`
+    * **Função:** Constrói as assinaturas MinHash para todos os usuários.
+    * **Funcionalidade:** Gera um conjunto de funções hash universais. Pré-computa os hashes de todos os filmes únicos para otimização. Processa em paralelo (usando `std::async`) os ratings de cada usuário para gerar suas assinaturas MinHash, onde cada elemento da assinatura é o menor valor de hash de todos os filmes avaliados por aquele usuário.
+* `void LSHIndex::indexSignatures()`
+    * **Função:** Indexa as assinaturas MinHash nas tabelas LSH.
+    * **Funcionalidade:** Para cada assinatura de usuário, divide-a em bandas. Para cada tabela LSH, um hash combinado é calculado a partir de um subconjunto de bandas (`BANDS_PER_TABLE`). O `userId` é então adicionado ao bucket correspondente a esse hash combinado na tabela. Também imprime estatísticas sobre a distribuição dos buckets.
+* `std::vector<uint32_t> LSHIndex::findSimilarCandidates(uint32_t userId, int maxCandidates) const`
+    * **Função:** Busca usuários candidatos similares a um `userId` específico usando o índice LSH.
+    * **Funcionalidade:** Para a assinatura do usuário-alvo, calcula os hashes de banda e busca nos buckets correspondentes em cada tabela LSH. Acumula os `candidateId`s encontrados, contando quantas vezes cada candidato aparece (indica maior similaridade). Implementa uma estratégia de "multi-probe LSH" se poucos candidatos forem encontrados, buscando em buckets vizinhos para aumentar o recall. Os candidatos são então ranqueados com base na frequência de ocorrência e uma similaridade Jaccard estimada, e os top `maxCandidates` são retornados.
+* `float LSHIndex::estimateJaccardSimilarity(uint32_t user1, uint32_t user2) const`
+    * **Função:** Estima a similaridade de Jaccard entre dois usuários com base em suas assinaturas MinHash.
+    * **Funcionalidade:** Calcula a proporção de hashes correspondentes entre duas assinaturas MinHash. Esta é uma estimativa da verdadeira similaridade de Jaccard dos conjuntos de filmes.
+* `size_t LSHIndex::hashBand(const MinHashSignature &sig, int bandIdx, int tableIdx) const`
+    * **Função:** Calcula o hash de uma banda específica da assinatura MinHash.
+    * **Funcionalidade:** Combina os valores de hash dentro de uma banda para gerar um valor de hash para aquela banda, usado para indexação nas tabelas LSH. Inclui operações para "misturar" os hashes e limitar o espaço de hash.
+* `std::vector<std::pair<uint32_t, uint32_t>> LSHIndex::generateHashFunctions()`
+    * **Função:** Gera os parâmetros (`a`, `b`) para as funções de hash universais usadas na MinHash.
+    * **Funcionalidade:** Retorna um vetor de pares, onde cada par representa uma função hash linear da forma `(a * x + b) % P`.
+* `void LSHIndex::printStatistics() const`
+    * **Função:** Imprime estatísticas sobre a distribuição dos buckets no índice LSH.
+    * **Funcionalidade:** Analisa e reporta o número total de buckets, buckets vazios, tamanhos de bucket (pequeno, médio, grande), tamanho médio e o maior bucket, fornecendo insights sobre a eficácia da indexação LSH.
+
+### `SimilarityCalculator.cpp`
+
+* `SimilarityCalculator::SimilarityCalculator(const unordered_map<uint32_t, UserProfile> &u)`
+    * **Função:** Construtor da classe `SimilarityCalculator`.
+    * **Funcionalidade:** Inicializa a referência ao mapa de usuários (`users`).
+* `uint64_t SimilarityCalculator::makeKey(uint32_t user1, uint32_t user2) const`
+    * **Função:** Gera uma chave única `uint64_t` para um par de IDs de usuários.
+    * **Funcionalidade:** Combina os dois IDs de usuário (ordenados para garantir unicidade) em uma única chave de 64 bits para uso no cache de similaridade.
+* `float SimilarityCalculator::calculateCosineSimilarity(uint32_t user1, uint32_t user2) const`
+    * **Função:** Calcula a similaridade do cosseno entre dois usuários.
+    * **Funcionalidade:** Primeiro, verifica se a similaridade já está no cache. Se não estiver, calcula o produto escalar e as magnitudes dos vetores de avaliações dos usuários (considerando apenas itens em comum, encontrados eficientemente através da ordenação dos ratings). Armazena o resultado no cache antes de retorná-lo. Retorna 0.0f se não houver itens em comum suficientes (`MIN_COMMON_ITEMS`).
+
+### `RecommendationEngine.cpp`
+
+* `RecommendationEngine::RecommendationEngine(...)`
+    * **Função:** Construtor da classe `RecommendationEngine`.
+    * **Funcionalidade:** Inicializa as referências a todos os mapas de dados (`users`, `movies`, `movieToUsers`, etc.) e as instâncias do `SimilarityCalculator` e `LSHIndex`.
+* `std::vector<Recommendation> RecommendationEngine::recommendForUser(uint32_t userId)`
+    * **Função:** Função principal para gerar recomendações para um usuário específico.
+    * **Funcionalidade:** É o orquestrador do processo de recomendação para um único usuário. Encontra usuários candidatos via LSH, calcula suas similaridades, aplica a filtragem colaborativa, impulsiona scores com base em conteúdo e popularidade, aplica um fallback de popularidade se necessário, e finalmente ordena e limita as recomendações ao `TOP_K`.
+* `std::vector<std::pair<uint32_t, int>> RecommendationEngine::findCandidateUsers(uint32_t userId, const UserProfile &user)`
+    * **Função:** (Legado) Encontra usuários candidatos com base em filmes em comum.
+    * **Funcionalidade:** Esta é a versão mais simples de encontrar candidatos, iterando sobre todos os filmes avaliados pelo usuário-alvo e seus avaliadores. É menos eficiente para grandes datasets, e foi substituída por `findCandidateUsersLSH`. (Note: No seu `recommendForUser`, a chamada é para `findCandidateUsersLSH`.)
+* `std::vector<std::pair<uint32_t, int>> RecommendationEngine::findCandidateUsersLSH(uint32_t userId, const UserProfile &user)`
+    * **Função:** Encontra usuários candidatos para a filtragem colaborativa usando LSH.
+    * **Funcionalidade:** Consulta o `lshIndex` para obter um número expandido de candidatos potenciais. Para esses candidatos, calcula o número de itens em comum. Filtra para obter candidatos de "alta qualidade" (`MIN_COMMON_ITEMS`). Se o número de candidatos de alta qualidade for insuficiente (`MINIMUM_CANDIDATES`), implementa um fallback leve, adicionando os melhores candidatos da lista completa (mesmo com menos itens em comum) para garantir um pool mínimo.
+* `std::vector<std::pair<uint32_t, float>> RecommendationEngine::calculateSimilarities(uint32_t userId, const std::vector<std::pair<uint32_t, int>> &candidates)`
+    * **Função:** Calcula a similaridade entre o usuário-alvo e a lista de usuários candidatos.
+    * **Funcionalidade:** Paraleliza o cálculo da similaridade do cosseno para lotes de candidatos (`BATCH_SIZE`) usando `std::async`. Filtra os usuários cuja similaridade está abaixo de `MIN_SIMILARITY` e retorna os usuários mais similares, limitados por `MAX_SIMILAR_USERS`.
+* `std::unordered_map<uint32_t, float> RecommendationEngine::collaborativeFiltering(const UserProfile &user, const std::vector<std::pair<uint32_t, float>> &similarUsers, const std::unordered_set<uint32_t> &watchedMovies)`
+    * **Função:** Implementa a lógica de filtragem colaborativa baseada em usuários.
+    * **Funcionalidade:** Calcula um score para filmes não assistidos pelo usuário-alvo, ponderando as avaliações de usuários similares pela sua similaridade. As avaliações são ajustadas pela média do usuário similar. Um boost baseado na popularidade (log-normalizado) é aplicado aos scores calculados.
+* `void RecommendationEngine::contentBasedBoost(const UserProfile &user, const std::unordered_set<uint32_t> &watchedMovies, std::unordered_map<uint32_t, float> &scores)`
+    * **Função:** Aplica um boost de score baseado nas preferências de conteúdo do usuário.
+    * **Funcionalidade:** Se o usuário tiver gêneros preferidos, a função itera sobre os filmes desses gêneros que o usuário não assistiu. Um boost é calculado com base na média de avaliação do filme e sua popularidade, e adicionado ao score existente do filme.
+* `void RecommendationEngine::popularityFallback(const std::unordered_set<uint32_t> &watchedMovies, std::unordered_map<uint32_t, float> &scores)`
+    * **Função:** Fornece recomendações baseadas em popularidade como um fallback.
+    * **Funcionalidade:** Se o número de recomendações geradas pelas abordagens colaborativa e de conteúdo for menor que `TOP_K`, esta função preenche as recomendações restantes com filmes populares (não assistidos) que tenham uma avaliação média mínima, ponderados por sua popularidade.
+
+### `FastRecommendationSystem.cpp`
+
+* `FastRecommendationSystem::FastRecommendationSystem()`
+    * **Função:** Construtor da classe `FastRecommendationSystem`.
+    * **Funcionalidade:** Inicializa as instâncias dos módulos (`DataLoader`, `SimilarityCalculator`, `LSHIndex`, `RecommendationEngine`) e configura as dependências entre eles.
+* `FastRecommendationSystem::~FastRecommendationSystem()`
+    * **Função:** Destrutor da classe `FastRecommendationSystem`.
+    * **Funcionalidade:** Libera a memória alocada para as instâncias dos módulos.
+* `void FastRecommendationSystem::loadData()`
+    * **Função:** Carrega todos os dados necessários e constrói o índice LSH.
+    * **Funcionalidade:** Chama `dataLoader->loadRatings` e `dataLoader->loadMovies`. Em seguida, prepara os dados de avaliação dos usuários para o LSH e chama `lshIndex->buildSignatures` e `lshIndex->indexSignatures`, imprimindo estatísticas do LSH.
+* `void FastRecommendationSystem::processRecommendations(const string &filename)`
+    * **Função:** Orquestra a geração de recomendações para múltiplos usuários.
+    * **Funcionalidade:** Carrega os IDs dos usuários do arquivo `explore.dat`. Paraleliza o processo de recomendação para cada usuário (usando `std::thread` e `mutex` para sincronização na escrita de arquivos), chamando `recommendForUser` para cada um. Registra e imprime o tempo total e médio de recomendação.
+* `std::vector<Recommendation> FastRecommendationSystem::recommendForUser(uint32_t userId)`
+    * **Função:** Encapsula a chamada ao `RecommendationEngine` para um único usuário.
+    * **Funcionalidade:** Delega a lógica de recomendação para a instância do `recommendationEngine`.
+* `void FastRecommendationSystem::printRecommendations(uint32_t userId, const std::vector<Recommendation> &recommendations)`
+    * **Função:** Imprime as recomendações geradas para um usuário.
+    * **Funcionalidade:** Escreve as recomendações no arquivo `output.dat` no formato exigido pelo trabalho. Adicionalmente, para fins de depuração, escreve um formato mais detalhado (com títulos de filmes e scores) no `debug_recommendations.txt`.
+
+---
+
+## 📚 Bibliotecas
+
+A implementação do sistema de recomendação MovieLens faz uso extensivo da Standard Template Library (STL) do C++ e de bibliotecas para operações de sistema de baixo nível, visando alta performance e modularidade. As principais bibliotecas utilizadas são:
+
+* **Bibliotecas do Projeto (Headers Customizados):**
+    * `Config.hpp`: Define constantes e parâmetros globais do sistema, como o número de recomendações (TOP-K), limites de similaridade, parâmetros do LSH, e pesos para o sistema híbrido.
+    * `DataStructures.hpp`: Contém as definições das estruturas de dados personalizadas, como `UserProfile`, `Movie`, `Rating`, `Recommendation`, `MinHashSignature` e `BandHashParams`.
+    * `DataLoader.hpp`: Define a interface para o módulo responsável pelo carregamento e pré-processamento dos dados, incluindo filmes e avaliações.
+    * `LSHIndex.hpp`: Contém a implementação do índice de Localidade Sensível a Hash (LSH) para a busca eficiente de usuários similares.
+    * `RecommendationEngine.hpp`: Define a lógica central para a geração de recomendações, combinando filtragem colaborativa, conteúdo e popularidade.
+    * `SimilarityCalculator.hpp`: Responsável por calcular a similaridade entre usuários, incluindo a implementação da similaridade do cosseno e um mecanismo de cache.
+    * `FastRecommendationSystem.hpp`: Orquestra as diferentes etapas do sistema de recomendação, integrando os módulos de carregamento, LSH e geração de recomendações.
+    * `preProcessamento.hpp`: Contém as funções para o pré-processamento inicial do arquivo `ratings.csv`, incluindo filtragem e formatação para `input.dat`.
+
+* **Bibliotecas Padrão do C++ (STL e outras):**
+    * `iostream`: Essencial para operações de entrada e saída de dados no console.
+    * `fstream`: Utilizada para manipulação de arquivos, como leitura de `movies.csv` e escrita dos arquivos de saída (`output.dat`, `debug_recommendations.txt`).
+    * `string`: Para manipulação de cadeias de caracteres, como títulos de filmes e gêneros.
+    * `vector`: Uma das estruturas de dados mais fundamentais, utilizada para listas dinâmicas de avaliações, filmes, usuários, hashes e candidatos.
+    * `unordered_map`: Indispensável para implementações de tabelas hash, proporcionando acesso rápido a dados por chave (e.g., mapeamento de IDs para perfis de usuário, filmes, contagens).
+    * `unordered_set`: Utilizada para armazenar coleções de elementos únicos com busca eficiente, como a lista de filmes assistidos por um usuário ou filmes únicos para pré-computação de hashes.
+    * `cmath`: Contém funções matemáticas, como `sqrt` (raiz quadrada) para o cálculo da similaridade do cosseno e `log` para o boost de popularidade.
+    * `algorithm`: Fornece algoritmos genéricos como `sort` e `min`, utilizados para ordenação de avaliações, candidatos, e seleção de elementos.
+    * `chrono`: Para medição precisa de tempo de execução e análise de performance das diferentes etapas do sistema.
+    * `thread`: Para a implementação de programação paralela e gerenciamento de threads, permitindo a execução simultânea de tarefas para otimizar o desempenho.
+    * `mutex`: Para a sincronização entre threads, garantindo a integridade dos dados durante operações concorrentes (e.g., escrita em arquivos de saída, acesso ao cache de similaridade, merge de dados paralelos).
+    * `atomic`: Para operações atômicas seguras em variáveis compartilhadas entre threads, como contadores de progresso.
+    * `future`: Usado em conjunto com `async` para executar tarefas assíncronas e coletar seus resultados em ambiente multithreaded.
+    * `iomanip`: Para formatação da saída de dados (e.g., precisão de floats).
+    * `filesystem`: Para operações relacionadas ao sistema de arquivos, como criação de diretórios de saída.
+    * `sys/mman.h`, `fcntl.h`, `sys/stat.h`, `unistd.h`: Bibliotecas de baixo nível (específicas de sistemas Unix/Linux) para `mmap` (memory mapping) e operações de arquivo otimizadas, essenciais para o pré-processamento de grandes arquivos.
+    * `charconv` (C++17): Utilizada para conversão de strings para tipos numéricos (`std::from_chars`) e de tipos numéricos para strings (`std::to_chars`) de forma otimizada, sem alocações dinâmicas ou exceções, contribuindo para a alta performance do pré-processamento.
+    * `random`: Para geração de números aleatórios de forma eficiente, usada na inicialização das funções hash para o LSH.
+
+---
+
+## ⚙️ Definições e Estruturas Usadas
+
+Para a implementação do sistema de recomendação, foram utilizadas diversas estruturas de dados e definições globais, organizadas principalmente nos arquivos `Config.hpp` e `DataStructures.hpp`, além de outras específicas dentro das classes.
+
+### Constantes Globais (Definidas em `Config.hpp`)
+
+O arquivo `Config.hpp` centraliza os parâmetros configuráveis do sistema, permitindo um ajuste fácil para otimizar o desempenho e a qualidade das recomendações.
+
+* `TOP_K`: Número de recomendações a serem retornadas para cada usuário (e.g., `100`).
+* `MAX_SIMILAR_USERS`: Limite máximo de usuários similares a considerar para a filtragem colaborativa (e.g., `500`).
+* `MIN_COMMON_ITEMS`: Quantidade mínima de filmes em comum entre dois usuários para que sejam considerados candidatos a similaridade (e.g., `1`).
+* `MIN_RATING`: Avaliação mínima para um filme ser considerado "positivo" nas análises (e.g., `3.5f`).
+* `MIN_SIMILARITY`: Limiar mínimo de similaridade para considerar dois usuários como similares (e.g., `0.01f`).
+* `MAX_CANDIDATES`: Número máximo de usuários candidatos para serem analisados para similaridade (e.g., `1000`).
+* **Parâmetros LSH Otimizados:**
+    * `NUM_HASH_FUNCTIONS`: Número de funções de hash usadas para gerar as assinaturas MinHash (e.g., `96`).
+    * `NUM_BANDS`: Número de bandas em que a assinatura MinHash é dividida para o LSH (e.g., `24`).
+    * `ROWS_PER_BAND`: Número de linhas (hashes) por banda (e.g., `4`).
+    * `NUM_TABLES`: Número de tabelas hash independentes no LSH (e.g., `8`).
+    * `LARGE_PRIME`: Um número primo grande usado nas funções de hash universais (e.g., `4294967291u`).
+* `NUM_THREADS`: Número de threads a serem utilizadas para paralelização, baseado na concorrência de hardware (e.g., `std::thread::hardware_concurrency() - 2`).
+* `BATCH_SIZE`: Tamanho do lote para processamento paralelo (e.g., `100`).
+* **Pesos do Sistema Híbrido Otimizados:**
+    * `CF_WEIGHT`: Peso da filtragem colaborativa no score final (e.g., `1.0f`).
+    * `CB_WEIGHT`: Peso da recomendação baseada em conteúdo (e.g., `1.0f`).
+    * `POPULARITY_WEIGHT`: Peso do componente de popularidade no score final (e.g., `3.0f`).
+* **Novas Configurações de Fallback:**
+    * `MIN_CANDIDATES_FOR_CF`: Limiar mínimo de candidatos para acionar um modo de fallback (e.g., `50`).
+    * `EMERGENCY_FALLBACK_THRESHOLD`: Limiar para um modo de fallback mais agressivo (e.g., `10`).
+    * `POPULARITY_BOOST_WEIGHT`: Peso para o boost de popularidade em fallbacks (e.g., `1.5f`).
+* **Caminhos de Arquivo:** Constantes para os nomes e localizações dos arquivos de entrada e saída (e.g., `USERS_FILE`, `MOVIES_FILE`, `RATINGS_FILE`, `OUTPUT_FILE`, `DEBUG_OUTPUT_FILE`).
+
+### Estruturas de Dados (Definidas em `DataStructures.hpp` e outras classes)
+
+As estruturas abaixo modelam as entidades e dados fundamentais do sistema.
+
+* `struct Rating`:
+    * `movieId`: Identificador único do filme (`uint32_t`).
+    * `rating`: Avaliação atribuída ao filme (`float`).
+    * Define o operador `<` para permitir a ordenação de ratings por `movieId`, crucial para otimizações de similaridade.
+* `struct UserProfile`:
+    * `userId`: Identificador único do usuário (`uint32_t`).
+    * `ratings`: Um `std::vector<Rating>` contendo todas as avaliações que o usuário fez, mantido ordenado por `movieId`.
+    * `avgRating`: Média das avaliações do usuário (`float`).
+    * `preferredGenres`: Uma máscara de bits (`uint32_t`) que representa os gêneros preferidos do usuário, permitindo o armazenamento eficiente de múltiplas preferências.
+* `struct Movie`:
+    * `movieId`: Identificador único do filme (`uint32_t`).
+    * `title`: Título do filme (`std::string`).
+    * `genres`: Um `std::vector<std::string>` com os nomes dos gêneros do filme.
+    * `genreBitmask`: Uma máscara de bits (`uint32_t`) representando os gêneros, para verificações e operações eficientes.
+* `struct Recommendation`:
+    * `movieId`: Identificador do filme recomendado (`uint32_t`).
+    * `score`: Score de recomendação do filme (`float`), usado para ordenar as recomendações.
+* `struct MinHashSignature`:
+    * `userId`: Identificador do usuário ao qual a assinatura pertence (`uint32_t`).
+    * `signature`: Um `std::array<uint32_t, Config::NUM_HASH_FUNCTIONS>` contendo os valores da assinatura MinHash do usuário.
+* `struct BandHashParams`:
+    * `a`, `b`: Parâmetros (`uint32_t`) para as funções de hash universais usadas dentro de cada banda do LSH.
+* `struct DataChunk`: (Definida em `preProcessamento.hpp`)
+    * `start`, `end`: Ponteiros para o início e fim de um bloco de memória mapeada do arquivo de ratings, para processamento paralelo.
+    * `local_user_data`: Um `unordered_map` local para armazenar avaliações de usuários dentro de um chunk processado por uma thread.
+    * `local_movie_count`: Um `unordered_map` local para contagem de avaliações por filme dentro de um chunk.
+* `struct ThreadData`: (Definida em `DataLoader.cpp`)
+    * Estrutura alinhada (`alignas(64)`) para evitar "false sharing" em operações paralelas de carregamento de dados. Contém `unordered_map`s locais para usuários, `movieToUsers`, `movieSums`, `movieCounts`, além de somas e contagens de ratings para agregação.
+---
+
+## 🏁 Conclusão
+
+O desenvolvimento e otimização do sistema de recomendação para a base de dados MovieLens 25M, conforme detalhado neste trabalho, demonstram a eficácia de uma abordagem híbrida e a importância da otimização de baixo nível para lidar com grandes volumes de dados. As melhorias implementadas permitiram um ganho significativo de desempenho, tornando o sistema mais eficiente em termos de tempo de execução e utilização de recursos.
+
+A fase de pré-processamento, otimizada com memory mapping e `std::from_chars` para parsing paralelo, estabeleceu uma base sólida para o carregamento rápido dos dados. A integração do **Locality Sensitive Hashing (LSH)**, com parâmetros ajustados para gerar buckets mais densos e estratégias de `multi-probe` para melhorar o recall, foi fundamental para a busca eficiente de usuários similares, superando os desafios da esparsidade de dados em grandes datasets.
+
+A arquitetura híbrida do `RecommendationEngine`, que combina **filtragem colaborativa** (utilizando a similaridade do cosseno com cache para pares de usuários), **recomendação baseada em conteúdo** (aproveitando as preferências de gênero dos usuários), e um forte componente de **popularidade**, contribuiu para a alta qualidade e robustez das recomendações. A paralelização do cálculo de similaridades e da geração de recomendações para múltiplos usuários usando `std::thread` e `std::async` maximizou o aproveitamento dos recursos de hardware.
+
+Os mecanismos de fallback, como o preenchimento de listas de candidatos com "qualidade média" via LSH e o fallback de popularidade, garantiram que o sistema sempre fosse capaz de gerar um número adequado de recomendações, mesmo para usuários com poucos vizinhos ou perfis incompletos. Embora o tempo de execução total e por usuário deva ser medido em execução, o design do sistema foi pensado para atender aos requisitos de desempenho, visando um tempo médio por recomendação/usuário inferior a 2.5 segundos.
+
+Este trabalho abre portas para futuras pesquisas, incluindo a exploração de modelos de similaridade mais avançados, técnicas de filtragem colaborativa baseadas em itens, e a adaptação para fluxos de dados em tempo real. A contínua evolução dessas abordagens poderá aprimorar ainda mais a precisão e a eficiência, solidificando sua relevância no campo dos sistemas de recomendação.
 
