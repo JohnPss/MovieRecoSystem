@@ -1,9 +1,57 @@
 # 🎬 Sistema de Recomendação MovieLens
 
-## 📋 Índice
+<details>
+<summary><h2>📋 Índice</h2></summary>
 
+- [🎬 Sistema de Recomendação MovieLens](#-sistema-de-recomendação-movielens)
+  - [📝 Introdução](#introdução)
+  - [🎯 Objetivos](#objetivos)
+    - [Objetivo Geral](#objetivo-geral)
+    - [Objetivos Específicos](#objetivos-específicos)
+  - [📚 Fundamentação Teórica](#-fundamentação-teórica)
+    - [Sistemas de Recomendação](#sistemas-de-recomendação)
+    - [Abordagens de Recomendação](#abordagens-de-recomendação)
+      - [Filtragem Colaborativa (Collaborative Filtering - CF)](#filtragem-colaborativa-collaborative-filtering---cf)
+      - [Recomendação Baseada em Conteúdo (Content-Based - CB)](#recomendação-baseada-em-conteúdo-content-based---cb)
+      - [Sistema Híbrido](#sistema-híbrido)
+    - [Similaridade do Cosseno (Cosine Similarity)](#similaridade-do-cosseno-cosine-similarity)
+    - [Locality Sensitive Hashing (LSH)](#locality-sensitive-hashing-lsh)
+    - [Métricas de Desempenho](#métricas-de-desempenho)
+  - [🔬 Modelagem da Aplicação](#-modelagem-da-aplicação)
+    - [Fluxo de Execução do Sistema](#fluxo-de-execução-do-sistema)
+    - [📊 Estruturas de Dados](#-estruturas-de-dados)
+    - [🚀 Otimizações Propostas](#-otimizações-propostas)
+      - [Pré-processamento e Carregamento de Dados](#pré-processamento-e-carregamento-de-dados)
+      - [Otimizações no LSH e Busca de Similares](#otimizações-no-lsh-e-busca-de-similares)
+      - [Otimizações na Geração de Recomendações](#otimizações-na-geração-de-recomendações)
+  - [📝 Metodologia](#-metodologia)
+    - [📁 Arquivos](#arquivos)
+    - [📚 Bibliotecas](#-bibliotecas)
+    - [⚙️ Definições e Estruturas Usadas](#️-definições-e-estruturas-usadas)
+      - [Constantes Globais (Definidas em `Config.hpp`)](#constantes-globais-definidas-em-confighpp)
+      - [Estruturas de Dados (Definidas em `DataStructures.hpp` e outras classes)](#estruturas-de-dados-definidas-em-datastructureshpp-e-outras-classes)
+    - [📝 Funções Implementadas](#-funções-implementadas)
+      - [`main.cpp`](#maincpp)
+      - [`preProcessamento.cpp`](#preprocessamentocpp)
+      - [`DataLoader.cpp`](#dataloadercpp)
+      - [`LSHIndex.cpp`](#lshindexcpp)
+      - [`SimilarityCalculator.cpp`](#similaritycalculatorcpp)
+      - [`RecommendationEngine.cpp`](#recommendationenginecpp)
+      - [`FastRecommendationSystem.cpp`](#fastrecommendationsystemcpp)
+  - [🏁 Conclusão](#-conclusão)
+  - [🔧 Configuração do Ambiente](#configuração-do-ambiente)
+  - [💻 Como Compilar e Executar](#-como-compilar-e-executar)
+    - [Clone o Repositório](#clone-o-repositório)
+    - [Pré-requisitos](#pré-requisitos)
+    - [Compilação](#compilação)
+    - [Execução](#execução)
+  - [👥 Equipe de Desenvolvimento](#-equipe-de-desenvolvimento)
+    - [🚀 Nossos Desenvolvedores](#-nossos-desenvolvedores)
+    - [📊 Estatísticas da Equipe](#-estatísticas-da-equipe)
+    - [🤝 Sobre Nossa Colaboração](#-sobre-nossa-colaboração)
+      - [🎯 Nossos Valores](#-nossos-valores)
 
----
+</details>
 
 
 ## 📝Introdução
@@ -180,7 +228,7 @@ A escolha e a implementação eficientes das estruturas de dados são cruciais p
 
 
 
-### 🏋️‍♂️ Otimizações Propostas
+### 🚀 Otimizações Propostas
 
 As otimizações implementadas visaram tanto a eficiência do pré-processamento quanto a aceleração das fases de carregamento e recomendação, que são críticas para o desempenho em tempo real. As principais áreas de otimização e as abordagens utilizadas são:
 
@@ -609,7 +657,7 @@ Caso precise instalar ou atualizar o compilador e as ferramentas de build essenc
     ```
 - Biblioteca Padrão: O projeto utiliza exclusivamente a biblioteca padrão da linguagem C++. Não há dependências de bibliotecas de terceiros externas.
 
-## 🛠️Como Compilar e Executar
+## 💻 Como Compilar e Executar
 
 Este projeto utiliza um `Makefile` para simplificar e padronizar os processos de compilação e execução. É fundamental seguir os comandos especificados para garantir a reprodutibilidade do ambiente.
 
