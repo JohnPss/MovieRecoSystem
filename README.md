@@ -1,5 +1,6 @@
-#          🎬 Sistema de Recomendação MovieLens
-
+<h1 align='center'>
+         🎬 Sistema de Recomendação MovieLens
+</h1>
 <div align='center'>
 <img src="assets/img.png" alt="Descrição" width="600" height="500"/>
 </div>
@@ -313,10 +314,11 @@ As abordagens propostas para otimizar o sistema de recomendação MovieLens fora
 
 A implementação do sistema de recomendação foi estruturada em etapas distintas, conforme detalhado na Modelagem da Aplicação: um **pré-processamento** dos dados brutos, um **carregamento dos dados e construção do índice LSH** (que pode ser considerado o "treinamento" do modelo de vizinhança), e a **fase de recomendação**, onde o sistema gera sugestões personalizadas para usuários específicos. Durante a fase de carregamento e construção do índice LSH, o sistema mapeia as avaliações de usuários e filmes, construindo estruturas de dados eficientes para representá-los e para permitir a busca rápida por usuários similares. Na fase de recomendação, o sistema classifica e ranqueia filmes para o usuário-alvo, utilizando uma combinação de técnicas como filtragem colaborativa, conteúdo e popularidade para determinar as melhores sugestões.
 
-### 📁Arquivos
 
-Para a implementação do sistema de recomendação MovieLens, o projeto foi organizado em um diretório principal, contendo subdiretórios para armazenar os arquivos de código-fonte, os datasets utilizados e os arquivos de saída. 
-A seguir, a estrutura do diretório do projeto:
+## 📁 Estrutura do Projeto
+
+A seguir, a estrutura do diretório do projeto, organizada para separar o código-fonte, os dados e os resultados:
+
 ```
 .
 ├── Makefile
@@ -324,69 +326,53 @@ A seguir, a estrutura do diretório do projeto:
 ├── datasets/
 │   ├── input.dat
 │   └── explore.dat
-├──outcome/
-|   └──output.dat
+├── outcome/
+│   └── output.dat
 ├── ml-25m/
-│   └── arquivos MovieLens (como ratings.csv, movies.csv, etc.)
+│   └── ratings.csv, movies.csv, ...
 └── src/
-    ├── Config.hpp                
-    ├── DataLoader.cpp
-    ├── DataLoader.hpp
-    ├── DataStructures.hpp        
-    ├── FastRecommendation.cpp    
-    ├── FastRecommendation.hpp
-    ├── LSHIndex.cpp              
-    ├── LSHIndex.hpp
-    ├── Main.cpp                 
-    ├── preProcessament.cpp       
-    ├── preProcessament.hpp       
-    ├── RecommendationEngine.cpp        
-    ├── RecommendationEngine.hpp
-    ├── SimilarityCalculator.cpp  
-    └── SimilarityCalculator.hpp
-
+    ├── Config.hpp
+    ├── DataLoader.cpp/.hpp
+    ├── DataStructures.hpp
+    ├── FastRecommendation.cpp/.hpp
+    ├── LSHIndex.cpp/.hpp
+    ├── Main.cpp
+    ├── preProcessament.cpp/.hpp
+    ├── RecommendationEngine.cpp/.hpp
+    └── SimilarityCalculator.cpp/.hpp
 ```
-- `.`: Diretório raiz do projeto.
 
-- `Makefile`: Script para compilação e execução do projeto.
+### Arquivos e Diretórios
 
-- `README.md`: Este arquivo de documentação.
+* [`Makefile`](Makefile): Script para compilação e execução do projeto.
 
-- `datasets/`: Diretório para armazenar os dados de entrada processados para o sistema.
+* [`README.md`](README.md): Este arquivo de documentação.
 
-    - `input.dat`: Base de dados pré-processada no formato `usuario_id item_id1:nota1 ...`, utilizada como fonte de dados para o algoritmo de recomendação.
+* [`datasets/`](datasets): Contém os dados de entrada processados para o sistema.
 
-    - `explore.dat`: Lista de `usuario_ids` para os quais as recomendações personalizadas serão geradas.
+  * [`input.dat`](datasets/input.dat): Base de dados no formato `usuario_id item_id1:nota1 ...`, usada pelo algoritmo de recomendação.
+  * [`explore.dat`](datasets/explore.dat): Lista de `usuario_ids` para os quais serão geradas recomendações.
 
-- `outcome/`:Diretório para armazenar os resultados.
+* [`outcome/`](outcome): Diretório de saída com os resultados.
 
-    - `output.dat`: Arquivo de saída contendo as K recomendações para cada usuário listado em `explore.dat`, no formato `usuario_id item_id1 item_id2 ...`.
+  * [`output.dat`](outcome/output.dat): Contém as recomendações no formato `usuario_id item_id1 item_id2 ...`.
 
-- `ml-25m/`: Diretório que contém os arquivos brutos originais da base de dados MovieLens 25M, baixados diretamente do Kaggle.
+* [`ml-25m/`](ml-25m): Contém os dados brutos originais do MovieLens 25M.
 
-    - `ratings.csv`: O arquivo principal com as avaliações dos usuários.
+  * [`ratings.csv`](ml-25m/ratings.csv), [`movies.csv`](ml-25m/movies.csv), etc.: Arquivos originais do dataset usados no pré-processamento.
 
-    - `movies.csv, tags.csv, etc.`: Outros arquivos que podem ser explorados para dados adicionais durante o pré-processamento.
+* [`src/`](src): Contém todos os arquivos de código-fonte modularizados:
 
-- `src/`: Contém todos os arquivos de código-fonte modularizados (implementações .cpp e cabeçalhos .hpp).
+  * [`Config.hpp`](src/Config.hpp): Define constantes globais e parâmetros do sistema (ex: `TOP_K `).
+  * [`DataLoader.cpp`](src/DataLoader.cpp) / [`DataLoader.hpp`](src/DataLoader.hpp): Módulo responsável pelo carregamento e gerenciamento dos dados em memória.
+  * [`DataStructures.hpp`](src/DataStructures.hpp): Define as estruturas de dados utilizadas no projeto.
+  * [`FastRecommendation.cpp`](src/FastRecommendation.cpp) / [`FastRecommendation.hpp`](src/FastRecommendation.hpp): Abordagem otimizada de recomendação.
+  * [`LSHIndex.cpp`](src/LSHIndex.cpp) / [`LSHIndex.hpp`](src/LSHIndex.hpp): Implementação de Locality Sensitive Hashing (LSH) para otimizar a busca por vizinhos (se aplicável).
+  * [`Main.cpp`](src/Main.cpp): Ponto de entrada principal do programa.
+  * [`preProcessament.cpp`](src/preProcessament.cpp) / [`preProcessament.hpp`](src/preProcessament.hpp): Funções de pré-processamento dos dados brutos.
+  * [`RecommendationEngine.cpp`](src/RecommendationEngine.cpp) / [`RecommendationEngine.hpp`](src/RecommendationEngine.hpp): Lógica principal do motor de recomendação.
+  * [`SimilarityCalculator.cpp`](src/SimilarityCalculator.cpp) / [`SimilarityCalculator.hpp`](src/SimilarityCalculator.hpp): Implementa as métricas de similaridade (Cosseno, Euclidiana, Jaccard).
 
-    - `Config.hpp`: Define constantes globais e parâmetros de configuração do sistema (ex: `TOP_N_RECOMMENDATIONS`).
-
-    - `DataLoader.cpp/.hpp`: Responsável pelo carregamento dos dados de `input.dat` para estruturas de dados em memória e pelo gerenciamento desses dados.
-
-    - `DataStructures.hpp`: Contém as definições das estruturas de dados customizadas utilizadas no projeto (ex: structs para usuários, itens, nós de listas ou árvores, etc.).
-
-    - `FastRecommendation.cpp/.hpp`: Este módulo abriga uma abordagem otimizada ou um método específico de recomendação desenvolvido para acelerar o processo.
-
-    - `LSHIndex.cpp/.hpp`: Contém a implementação de Locality Sensitive Hashing (LSH), uma técnica de indexação para otimização da busca por vizinhos similares em grandes conjuntos de dados. Confirme se LSH foi realmente utilizado.
-
-    - `Main.cpp`: O ponto de entrada principal do programa, que orquestra as chamadas para as diferentes fases do sistema (pré-processamento, carregamento, recomendação, gravação de saída).
-
-    - `preProcessament.cpp/.hpp`: Contém as funções responsáveis pelo processamento inicial da base de dados bruta (`ml-25m/ratings.csv e outros`), incluindo filtragem de usuários/filmes, remoção de duplicatas e geração do `input.dat`.
-
-    - `RecommendationEngine.cpp/.hpp`: Abriga a lógica central do algoritmo de recomendação, gerenciando a busca por vizinhos, a agregação de recomendações e a priorização dos filmes a serem sugeridos.
-
-    - `SimilarityCalculator.cpp/.hpp`: Implementa as métricas de similaridade (Euclidiana, Cosseno, Jaccard) utilizadas para quantificar a afinidade entre usuários.
       
 ### 📚 Bibliotecas
 
