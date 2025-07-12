@@ -8,7 +8,6 @@
 // Estrutura para armazenar informações de um filme
 struct Movie
 {
-    std::string title;
     uint32_t genreBitmask;
     std::vector<std::string> genres;
 };

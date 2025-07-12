@@ -346,7 +346,7 @@ namespace Config
     inline static const std::string MOVIES_FILE = "ml-25m/movies.csv";          // Arquivo de metadados de filmes (para CB/popularidade)
     inline static const std::string RATINGS_FILE = "datasets/input.dat";        // Arquivo de avaliações pré-processadas
     inline static const std::string OUTPUT_FILE = "outcome/output.dat";         // Arquivo de saída com as recomendações
-    inline static const std::string DEBUG_OUTPUT_FILE = "outcome/debug_recommendations.txt"; // Arquivo para logs de depuração
+
 }
 ```
 

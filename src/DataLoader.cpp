@@ -136,13 +136,9 @@ vector<uint32_t> DataLoader::loadUsersToRecommend(const string &filename)
 
 void DataLoader::Impl::loadRatings(const string &filename)
 {
-    printf("Carregando ratings usando mmap otimizado...\n");
-    const auto start = high_resolution_clock::now();
-
     const int fd = open(filename.c_str(), O_RDONLY);
     if (fd == -1)
     {
-        perror(("Erro ao abrir " + filename).c_str());
         return;
     }
 
@@ -150,7 +146,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
     if (fstat(fd, &sb) == -1)
     {
         close(fd);
-        perror(("Erro ao obter status do arquivo " + filename).c_str());
         return;
     }
 
@@ -159,7 +154,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
     if (file_data == MAP_FAILED)
     {
         close(fd);
-        perror("Erro ao mapear arquivo na memoria.");
         return;
     }
     close(fd);
@@ -168,8 +162,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
 
     const int num_threads = min(static_cast<int>(thread::hardware_concurrency()),
                                 max(1, static_cast<int>(sb.st_size / 5000000)));
-    printf("Usando %d threads para processar %llu MB\n",
-           num_threads, static_cast<unsigned long long>(sb.st_size / (1024 * 1024)));
 
     vector<ThreadData> threadData(num_threads);
     vector<thread> threads;
@@ -200,7 +192,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
                 p = skipToNext(p, chunk_end);
                 if (p >= chunk_end) break;
                 
-                
                 uint32_t userId;
                 const auto [p1, ec1] = std::from_chars(p, chunk_end, userId);
                 if (ec1 != std::errc{}) continue;
@@ -213,7 +204,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
                 int ratingsCount = 0;
 
                 while (p < chunk_end && *p != '\n' && *p != '\r') {
-                    
                     uint32_t movieId;
                     const auto [p2, ec2] = std::from_chars(p, chunk_end, movieId);
                     if (ec2 != std::errc{}) break;
@@ -221,12 +211,10 @@ void DataLoader::Impl::loadRatings(const string &filename)
                     if (p >= chunk_end || *p != ':') break;
                     ++p; 
                     
-                    
                     float rating;
                     const auto [p3, ec3] = std::from_chars(p, chunk_end, rating);
                     if (ec3 != std::errc{}) break;
                     p = skipWhitespace(p3, chunk_end);
-
                     
                     user.ratings.emplace_back(movieId, rating);
                     data.movieToUsers[movieId].emplace_back(userId, rating);
@@ -241,7 +229,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
                     data.ratingCount += ratingsCount;
                     user.avgRating = sumRatings / ratingsCount;
                     
-                    
                     if (user.ratings.size() > 1) {
                         std::sort(user.ratings.begin(), user.ratings.end());
                     }
@@ -252,12 +239,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
     for (auto &t : threads)
         t.join();
     munmap(const_cast<char *>(file_data), sb.st_size);
-
-    const auto parse_end = high_resolution_clock::now();
-    printf("Parse paralelo: %ldms\n", duration_cast<milliseconds>(parse_end - start).count());
-
-    const auto merge_start = high_resolution_clock::now();
-    printf("Merging resultados...\n");
 
     size_t totalUsers = 0;
     unordered_map<uint32_t, size_t> movieRatingCounts;
@@ -285,7 +266,6 @@ void DataLoader::Impl::loadRatings(const string &filename)
 
     for (auto &data : threadData)
     {
-
         for (auto &[userId, profile] : data.users)
         {
             users[userId] = move(profile);
@@ -320,23 +300,13 @@ void DataLoader::Impl::loadRatings(const string &filename)
         if (count > 0)
             sum /= count;
     }
-
-    const auto end = high_resolution_clock::now();
-    printf("Merge: %ldms\n", duration_cast<milliseconds>(end - merge_start).count());
-    printf("Total: %ldms | Usuários: %zu | Ratings: %llu\n",
-           duration_cast<milliseconds>(end - start).count(),
-           users.size(), static_cast<unsigned long long>(totalRatings));
 }
 
 void DataLoader::Impl::loadMovies(const string &filename)
 {
-    printf("Carregando filmes...\n");
-    const auto start = high_resolution_clock::now();
-
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        fprintf(stderr, "Erro ao abrir %s\n", filename.c_str());
         return;
     }
 
@@ -345,7 +315,7 @@ void DataLoader::Impl::loadMovies(const string &filename)
 
     string line;
     line.reserve(256);
-    std::getline(file, line);
+    std::getline(file, line); // Skip header
 
     int genreCounter = 0;
     while (std::getline(file, line))
@@ -357,22 +327,21 @@ void DataLoader::Impl::loadMovies(const string &filename)
         if (first_comma == string::npos)
             continue;
 
-        const auto second_comma = line.find(',', first_comma + 1);
-        if (second_comma == string::npos)
+        const auto last_comma = line.rfind(',');
+        if (last_comma == string::npos || last_comma <= first_comma)
+        {
+            const string movieIdStr = line.substr(0, first_comma);
+            const uint32_t movieId = std::stoul(movieIdStr);
+            Movie &movie = movies[movieId];
+            movie.genreBitmask = 0;
             continue;
+        }
 
         const string movieIdStr = line.substr(0, first_comma);
-        string title = line.substr(first_comma + 1, second_comma - first_comma - 1);
-        const string genres = line.substr(second_comma + 1);
-
-        if (title.size() >= 2 && title.front() == '"' && title.back() == '"')
-        {
-            title = title.substr(1, title.length() - 2);
-        }
+        const string genres = line.substr(last_comma + 1);
 
         const uint32_t movieId = std::stoul(movieIdStr);
         Movie &movie = movies[movieId];
-        movie.title = move(title);
         movie.genreBitmask = 0;
         movie.genres.reserve(5);
 
@@ -399,20 +368,11 @@ void DataLoader::Impl::loadMovies(const string &filename)
         }
     }
 
-    const auto parseEnd = high_resolution_clock::now();
-    printf("Parse filmes: %ldms\n", duration_cast<milliseconds>(parseEnd - start).count());
-
     calculateUserPreferences();
-
-    const auto end = high_resolution_clock::now();
-    printf("Filmes carregados: %ldms\n", duration_cast<milliseconds>(end - start).count());
 }
 
 void DataLoader::Impl::calculateUserPreferences()
 {
-    printf("Calculando preferências de %zu usuários...\n", users.size());
-    const auto start = high_resolution_clock::now();
-
     vector<UserProfile *> userPtrs;
     userPtrs.reserve(users.size());
     for (auto &[userId, profile] : users)
@@ -422,11 +382,8 @@ void DataLoader::Impl::calculateUserPreferences()
 
     const int num_threads = min(static_cast<int>(thread::hardware_concurrency()),
                                 max(1, static_cast<int>(userPtrs.size() / 5000)));
-    printf("Usando %d threads para preferências...\n", num_threads);
-
     vector<thread> threads;
     threads.reserve(num_threads);
-    atomic<int> processed(0);
     const size_t chunk_size = userPtrs.size() / num_threads;
 
     for (int t = 0; t < num_threads; ++t)
@@ -434,7 +391,7 @@ void DataLoader::Impl::calculateUserPreferences()
         const size_t start_idx = t * chunk_size;
         const size_t end_idx = (t == num_threads - 1) ? userPtrs.size() : (t + 1) * chunk_size;
 
-        threads.emplace_back([this, &userPtrs, &processed, start_idx, end_idx]()
+        threads.emplace_back([this, &userPtrs, start_idx, end_idx]()
                              {
             for (size_t i = start_idx; i < end_idx; ++i) {
                 UserProfile& user = *userPtrs[i];
@@ -472,19 +429,11 @@ void DataLoader::Impl::calculateUserPreferences()
                         user.preferredGenres |= (1U << sortedGenres[j].second);
                     }
                 }
-                
-                const int count = ++processed;
-                if (count % 50000 == 0) {
-                    printf("Processadas %d preferências...\n", count);
-                }
             } });
     }
 
     for (auto &t : threads)
         t.join();
-
-    const auto end = high_resolution_clock::now();
-    printf("Preferências calculadas: %ldms\n", duration_cast<milliseconds>(end - start).count());
 }
 
 vector<uint32_t> DataLoader::Impl::loadUsersToRecommend(const string &filename)
@@ -495,7 +444,6 @@ vector<uint32_t> DataLoader::Impl::loadUsersToRecommend(const string &filename)
     std::ifstream file(filename);
     if (!file.is_open())
     {
-        fprintf(stderr, "Erro ao abrir %s\n", filename.c_str());
         return userIds;
     }
 

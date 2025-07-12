@@ -2,7 +2,7 @@
 #include "Config.hpp"
 #include <iostream>
 #include <iomanip>
-#include <chrono>
+
 #include <memory>
 #include <fstream>
 #include <thread>
@@ -11,9 +11,7 @@
 #include <filesystem>
 
 using namespace std;
-using namespace chrono;
 
-// Construtor e Destrutor permanecem os mesmos
 FastRecommendationSystem::FastRecommendationSystem() : globalAvgRating(0.0f)
 {
     dataLoader = new DataLoader(
@@ -35,13 +33,10 @@ FastRecommendationSystem::~FastRecommendationSystem()
     delete lshIndex;
 }
 
-// loadData permanece o mesmo
 void FastRecommendationSystem::loadData()
 {
     dataLoader->loadRatings(Config::RATINGS_FILE);
     dataLoader->loadMovies(Config::MOVIES_FILE);
-
-    cout << "\n--- Iniciando construção do índice LSH ---" << endl;
 
     auto userRatingsForLSH = make_unique<unordered_map<uint32_t, vector<pair<uint32_t, float>>>>();
     userRatingsForLSH->reserve(users.size());
@@ -54,24 +49,13 @@ void FastRecommendationSystem::loadData()
     lshIndex->buildSignatures(*userRatingsForLSH, Config::NUM_THREADS);
     lshIndex->indexSignatures();
     lshIndex->printStatistics();
-
-    cout << "--- Construção do índice LSH concluída ---\n"
-         << endl;
 }
 
-// processRecommendations permanece o mesmo
 void FastRecommendationSystem::processRecommendations(const string &filename)
 {
     vector<uint32_t> userIds = dataLoader->loadUsersToRecommend(filename);
 
-    cout << "\nGerando recomendações para " << userIds.size() << " usuários..." << endl;
-    auto totalStart = high_resolution_clock::now();
-
     filesystem::create_directory("outcome");
-    // Usaremos um arquivo diferente para a saída de debug para não bagunçar a saída oficial
-    ofstream resultFile("outcome/debug_recommendations.txt", ios::trunc);
-    resultFile.close();
-
     mutex fileMutex;
     vector<thread> threads;
     const unsigned int num_threads = std::max(1u, thread::hardware_concurrency());
@@ -99,74 +83,29 @@ void FastRecommendationSystem::processRecommendations(const string &filename)
             t.join();
         }
     }
-
-    auto totalEnd = high_resolution_clock::now();
-    auto totalDuration = duration_cast<milliseconds>(totalEnd - totalStart);
-    cout << "\nTempo total de recomendações: " << totalDuration.count() << "ms" << endl;
-    cout << "Tempo médio por usuário: " << (userIds.empty() ? 0 : totalDuration.count() / (double)userIds.size()) << "ms" << endl;
 }
 
-// recommendForUser permanece o mesmo
 vector<Recommendation> FastRecommendationSystem::recommendForUser(uint32_t userId)
 {
     return recommendationEngine->recommendForUser(userId);
 }
 
-// *** MUDANÇA: Função restaurada para a versão de debug com scores e títulos ***
 void FastRecommendationSystem::printRecommendations(
     uint32_t userId,
     const vector<Recommendation> &recommendations)
 {
-    // --- 1. Saída Oficial para o Trabalho (formato: ID_USUARIO ID_FILME1 ID_FILME2 ...) ---
-    {
-        ofstream resultFile(Config::OUTPUT_FILE, ios::app);
-        if (resultFile.is_open())
-        {
-            resultFile << userId;
-            for (const auto &rec : recommendations)
-            {
-                resultFile << " " << rec.movieId;
-            }
-            resultFile << endl;
-        }
-        else
-        {
-            cerr << "ERRO: Não foi possível abrir o arquivo de saída oficial '" << Config::OUTPUT_FILE << "'!" << endl;
-        }
-    }
 
-    // --- 2. Saída de Debug com Scores (fácil de remover) ---
-    // Para desativar a geração deste arquivo para a entrega final,
-    // basta comentar o bloco de código abaixo (da chave '{' até a chave '}').
+    ofstream resultFile(Config::OUTPUT_FILE, ios::app);
+    if (resultFile.is_open())
     {
-        ofstream debugFile(Config::DEBUG_OUTPUT_FILE, ios::app);
-        if (debugFile.is_open())
+        resultFile << userId;
+        for (const auto &rec : recommendations)
         {
-            debugFile << "Recomendações para User " << userId << ":" << endl;
-            if (recommendations.empty())
-            {
-                debugFile << "  Nenhuma recomendação encontrada." << endl;
-            }
-            else
-            {
-                int count = 0;
-                for (const auto &rec : recommendations)
-                {
-                    auto movieIt = movies.find(rec.movieId);
-                    if (movieIt != movies.end() && count < Config::TOP_K)
-                    {
-                        debugFile << "  " << (count + 1) << ". " << movieIt->second.title
-                                  << " (MovieID: " << rec.movieId << ", Score: " << fixed << setprecision(4)
-                                  << rec.score << ")" << endl;
-                        count++;
-                    }
-                }
-            }
-            debugFile << endl;
+            resultFile << " " << rec.movieId;
         }
-        else
-        {
-            cerr << "ERRO: Não foi possível abrir o arquivo de debug '" << Config::DEBUG_OUTPUT_FILE << "'!" << endl;
-        }
+        resultFile << endl;
+    }
+    else
+    {
     }
 }
