@@ -1,13 +1,9 @@
 #ifndef LSH_INDEX_HPP
 #define LSH_INDEX_HPP
 
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
-#include <cstdint>
-#include <random>
-#include <mutex>
 #include "Config.hpp"
+#include "DataStructures.hpp"
+
 
 // Configurações do LSH
 // namespace LSHConfig {

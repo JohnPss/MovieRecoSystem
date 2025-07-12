@@ -1,8 +1,4 @@
 #include "RecommendationEngine.hpp"
-#include "Config.hpp"
-#include <algorithm>
-#include <cmath>
-#include <future>
 
 using namespace std;
 

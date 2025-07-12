@@ -1,12 +1,7 @@
-#include <iostream>
-#include <chrono>
-#include <exception>
-#include <string>
-#include <vector>
-#include <iomanip>
+
+#include "Config.hpp"
 
 #include "FastRecommendationSystem.hpp"
-#include "Config.hpp"
 #include "preProcessament.hpp"
 
 using namespace std;

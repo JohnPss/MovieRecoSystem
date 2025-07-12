@@ -1,26 +1,7 @@
 #ifndef PREPROCESSAMENTO_HPP
 #define PREPROCESSAMENTO_HPP
 
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <chrono>
-#include <unordered_map>
-#include <unordered_set> // Adicionado
-#include <vector>
-#include <utility>
-#include <algorithm>
-#include <cstring>
-#include <thread>
-#include <mutex>
-#include <atomic>
-
-// Para Memory-Mapped Files (Unix/Linux)
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <cstdio>
+#include "Config.hpp"
 
 // --- Estruturas (sem alterações) ---
 struct Rating {

@@ -1,8 +1,7 @@
 #ifndef SIMILARITY_CALCULATOR_HPP
 #define SIMILARITY_CALCULATOR_HPP
 
-#include <unordered_map>
-#include <mutex>
+#include "Config.hpp"
 #include "DataStructures.hpp"
 
 class SimilarityCalculator
