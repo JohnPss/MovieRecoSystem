@@ -135,7 +135,7 @@ O desenvolvimento de um sistema de recomendação eficiente exige a compreensão
 
 ### Sistemas de Recomendação
 
-Sistemas de recomendação são ferramentas de filtragem de informação que visam prever as preferências de um usuário por um item e sugerir os itens mais relevantes para ele. Eles são amplamente utilizados em plataformas de e-commerce, streaming de mídia e redes sociais para personalizar a experiência do usuário, aumentar o engajamento e impulsionar o consumo de conteúdo. [cite_start]O objetivo principal é ajudar os usuários a descobrir novos itens que eles provavelmente gostarão, superando o problema da sobrecarga de informação.
+Sistemas de recomendação são ferramentas de filtragem de informação que visam prever as preferências de um usuário por um item e sugerir os itens mais relevantes para ele. Eles são amplamente utilizados em plataformas de e-commerce, streaming de mídia e redes sociais para personalizar a experiência do usuário, aumentar o engajamento e impulsionar o consumo de conteúdo. O objetivo principal é ajudar os usuários a descobrir novos itens que eles provavelmente gostarão, superando o problema da sobrecarga de informação.
 
 ### Abordagens de Recomendação
 
