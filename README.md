@@ -830,11 +830,5 @@ Este projeto é resultado da colaboração entre estudantes dedicados, cada um c
 
 
 
-<div align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=16&pause=1000&color=6B7280&center=true&vCenter=true&width=600&lines=Obrigado+por+visitar+nosso+projeto!;Sinta-se+à+vontade+para+contribuir+🚀" alt="Typing SVG" />
-</div>
----
-
-
 
 
