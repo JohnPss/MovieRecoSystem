@@ -133,6 +133,15 @@ Nosso sistema de recomendação opera em três etapas principais, conforme visí
    
 Essa estrutura garante uma separação nítida das responsabilidades, possibilitando otimizações específicas para cada etapa.
 
+### Fluxo de Execução do Sistema
+
+O sistema de recomendação segue uma sequência de etapas bem definidas para carregar os dados, construir o índice de usuários similares e gerar as recomendações. O fluxograma abaixo ilustra esse processo:
+
+![Fluxo de Execução do Sistema de Recomendação](assets/fluxograma_recomendacao.png)
+
+*Figura 1: Visão geral do fluxo de dados e processamento no sistema de recomendação.*
+
+
 ### 📊 Estruturas de Dados
 
 A escolha e a implementação eficientes das estruturas de dados são cruciais para o desempenho de um sistema de recomendação que lida com grandes volumes de usuários e itens. Compreendendo as necessidades de armazenamento, acesso rápido e manipulação de dados, utilizamos diversas estruturas da STL do C++:
