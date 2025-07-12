@@ -724,7 +724,7 @@ Este comando fará com que o programa:
 <div align="center">
   <img src="https://img.shields.io/badge/Desenvolvedores-5-blue?style=for-the-badge&logo=github" alt="Desenvolvedores">
   <img src="https://img.shields.io/badge/Colaboração-100%25-green?style=for-the-badge&logo=handshake" alt="Colaboração">
-  <img src="https://img.shields.io/badge/Commits-∞-purple?style=for-the-badge&logo=git" alt="Commits">
+  <img src="https://img.shields.io/github/commit-activity/t/JohnPss/MovieRecoSystem?style=for-the-badge&logo=git&label=Total%20Commits" alt="Total de commits">
 </div>
 
 ---
