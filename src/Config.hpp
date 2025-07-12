@@ -1,81 +1,77 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <algorithm>
+#include <atomic>
+#include <charconv>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <future>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <memory>
+#include <mutex>
+#include <random>
+#include <string>
+#include <string_view>
 #include <thread>
-#include <cstdint> // Necessário para uint32_t
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
-// Configurações do sistema de recomendação
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+
+// Namespace para agrupar todas as configurações do sistema de recomendação.
 namespace Config
 {
-   // Parâmetros de recomendação
-   const int TOP_K = 100;              // Número de recomendações a retornar
-   const int MAX_SIMILAR_USERS = 500;  // Máximo de usuários similares a considerar
-   const int MIN_COMMON_ITEMS = 1;     // MUDANÇA: Aceita 1+ filme em comum (era 2)
-   const float MIN_RATING = 3.5f;      // Rating mínimo para considerar positivo
-   const float MIN_SIMILARITY = 0.01f; // MUDANÇA: Muito mais permissivo (era 0.05f)
-   const int MAX_CANDIDATES = 1000;    // MUDANÇA: Mais candidatos (era 800)
+   // --- Parâmetros de Recomendação ---
+   const int TOP_K = 5;                // Número de filmes a serem recomendados para cada usuário.
+   const int MAX_SIMILAR_USERS = 500;  // Número máximo de usuários similares a serem considerados no cálculo.
+   const int MIN_COMMON_ITEMS = 1;     // Número mínimo de itens avaliados em comum para que dois usuários sejam considerados similares.
+   const float MIN_RATING = 3.5f;      // Nota mínima (rating) para que uma avaliação seja considerada positiva.
+   const float MIN_SIMILARITY = 0.01f; // Limiar mínimo de similaridade para que um usuário seja considerado no cálculo.
+   const int MAX_CANDIDATES = 1000;    // Número máximo de filmes candidatos a serem considerados antes do ranqueamento final.
 
-   // --- Parâmetros LSH OTIMIZADOS ---
-   const int NUM_HASH_FUNCTIONS = 96; // MUDANÇA: Reduzido para permitir bands menores
-   const int NUM_BANDS = 24;          // MUDANÇA: Mais bands = mais chances de colidir
-   const int ROWS_PER_BAND = 4;       // MUDANÇA: 96/24 = 4 (muito menos rigoroso!)
-   const int NUM_TABLES = 8;          // MUDANÇA: Menos tabelas (era 12, performance vs recall)
-   const uint32_t LARGE_PRIME = 4294967291u;
+   // --- Parâmetros para o Locality-Sensitive Hashing (LSH) ---
+   const int NUM_HASH_FUNCTIONS = 96;        // Número total de funções de hash a serem utilizadas no MinHashing.
+   const int NUM_BANDS = 24;                 // Número de bandas para o LSH. Aumentar este valor aumenta a chance de encontrar candidatos similares.
+   const int ROWS_PER_BAND = 4;              // Número de linhas (hashes) por banda. Calculado como `NUM_HASH_FUNCTIONS / NUM_BANDS`.
+   const int NUM_TABLES = 8;                 // Número de tabelas de hash. Um balanço entre performance e a qualidade (recall) dos resultados.
+   const uint32_t LARGE_PRIME = 4294967291u; // Um número primo grande usado nos cálculos das funções de hash.
 
-   // Parâmetros de performance
-   const int NUM_THREADS = std::thread::hardware_concurrency() - 2;
-   const int BATCH_SIZE = 100; // Tamanho do batch para processamento paralelo
+   // --- Parâmetros de Desempenho e Concorrência ---
+   const int NUM_THREADS = std::thread::hardware_concurrency() - 2; // Número de threads para processamento paralelo. Deixa 2 núcleos livres para o sistema.
+   const int BATCH_SIZE = 100;                                      // Tamanho do lote de usuários a ser processado por cada thread.
 
-   // Pesos do sistema híbrido OTIMIZADOS
-   const float CF_WEIGHT = 1.0f;         // MUDANÇA: Reduzido (CF está falhando)
-   const float CB_WEIGHT = 1.0f;         // MUDANÇA: CB muito mais forte para compensar
-   const float POPULARITY_WEIGHT = 3.0f; // ← NOVO!
+   // --- Pesos para o Sistema Híbrido ---
+   const float CF_WEIGHT = 1.0f;         // Peso para o score do Filtro Colaborativo (Collaborative Filtering).
+   const float CB_WEIGHT = 1.0f;         // Peso para o score do Filtro Baseado em Conteúdo (Content-Based).
+   const float POPULARITY_WEIGHT = 1.5f; // Peso para o score de popularidade, usado para desempate e fallback.
 
-   // NOVAS CONFIGURAÇÕES DE FALLBACK
-   const int MIN_CANDIDATES_FOR_CF = 50;        // Se < 50 candidatos, força fallback
-   const int EMERGENCY_FALLBACK_THRESHOLD = 10; // Se < 10 candidatos, modo emergência
-   const float POPULARITY_BOOST_WEIGHT = 1.5f;  // Peso do boost de popularidade
+   // --- Configurações de Fallback ---
+   // Estratégias para quando o algoritmo principal não encontra candidatos suficientes.
+   const int MIN_CANDIDATES_FOR_CF = 50;        // Limiar mínimo de candidatos para aplicar o filtro colaborativo; abaixo disso, aciona o fallback.
+   const int EMERGENCY_FALLBACK_THRESHOLD = 10; // Limiar crítico de candidatos que aciona o modo de emergência (baseado em popularidade).
+   const float POPULARITY_BOOST_WEIGHT = 1.5f;  // Fator de reforço aplicado à popularidade dos itens durante o fallback.
 
-   inline static const std::string USERS_FILE = "datasets/explore.dat";
-   inline static const std::string MOVIES_FILE = "ml-25m/movies.csv";
-   inline static const std::string RATINGS_FILE = "datasets/input.dat";
-   inline static const std::string OUTPUT_FILE = "outcome/output.dat";
-   inline static const std::string DEBUG_OUTPUT_FILE = "outcome/debug_recommendations.txt";
-
+   // --- Caminhos dos Arquivos ---
+   inline static const std::string USERS_FILE = "datasets/explore.dat"; // Arquivo com os usuários para os quais as recomendações serão geradas.
+   inline static const std::string MOVIES_FILE = "ml-25m/movies.csv";   // Arquivo com os metadados dos filmes.
+   inline static const std::string RATINGS_FILE = "datasets/input.dat"; // Arquivo com o histórico de avaliações dos usuários.
+   inline static const std::string OUTPUT_FILE = "outcome/output.dat";  // Arquivo de saída para salvar as recomendações geradas.
 }
 
-#endif // CONFIG_H
-
-/*
- ==================================================================================
- CONFIGURAÇÃO OTIMIZADA PARA RESOLVER PROBLEMA DE BUCKETS PEQUENOS
- ----------------------------------------------------------------------------------
- MUDANÇAS PRINCIPAIS:
-
- 1. LSH MENOS RIGOROSO:
-    - NUM_BANDS = 24 (mais chances de colidir)
-    - ROWS_PER_BAND = 4 (era 8, muito menos rigoroso!)
-    - NUM_HASH_FUNCTIONS = 96 (reduzido para permitir bands menores)
-
- 2. FILTROS ULTRA-PERMISSIVOS:
-    - MIN_COMMON_ITEMS = 1 (aceita qualquer overlap)
-    - MIN_SIMILARITY = 0.01 (quase qualquer similaridade)
-    - MAX_CANDIDATES = 1000 (mais material para trabalhar)
-
- 3. CONTENT-BASED DOMINANTE:
-    - CB_WEIGHT = 3.0 (era 2.0, compensa CF fraco)
-    - CF_WEIGHT = 0.8 (reduzido, CF não está funcionando bem)
-
- 4. FALLBACKS AGRESSIVOS:
-    - Novos thresholds para forçar modos de emergência
-    - Boost de popularidade mais forte
-
- PROBABILIDADE DE COLISÃO COM ROWS_PER_BAND = 4:
- - Usuários 80% similares: 0.8^4 = 0.41 por band
- - Com 24 bands: 1-(1-0.41)^24 ≈ 99.999% chance de colidir!
- - Usuários 50% similares: 0.5^4 = 0.0625 por band
- - Com 24 bands: 1-(1-0.0625)^24 ≈ 78% chance de colidir
-
- EXPECTATIVA: Buckets com 50-200 usuários, Hit Rate 15-30%
- ==================================================================================
-*/
+#endif 

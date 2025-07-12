@@ -1,21 +1,88 @@
+
 #include "DataLoader.hpp"
-#include "Config.hpp"
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <vector>
-#include <charconv> // Para std::from_chars (C++17)
 
-using namespace std;
-using namespace chrono;
 
-// --- Funções Auxiliares de Parsing (NÃO MAIS USADAS, MANTIDAS PARA REFERÊNCIA) ---
-// As funções manuais foram substituídas por std::from_chars para máxima performance.
+
+
+using std::atomic;
+using std::make_pair;
+using std::make_unique;
+using std::max;
+using std::min;
+using std::move;
+using std::pair;
+using std::string;
+using std::thread;
+using std::unordered_map;
+using std::vector;
+using std::chrono::duration_cast;
+using std::chrono::high_resolution_clock;
+using std::chrono::milliseconds;
+
+class DataLoader::Impl
+{
+public:
+    unordered_map<uint32_t, UserProfile> &users;
+    unordered_map<uint32_t, Movie> &movies;
+    unordered_map<string, int> &genreToId;
+    unordered_map<uint32_t, vector<pair<uint32_t, float>>> &movieToUsers;
+    unordered_map<uint32_t, vector<uint32_t>> &genreToMovies;
+    float &globalAvgRating;
+    unordered_map<uint32_t, float> &movieAvgRatings;
+    unordered_map<uint32_t, int> &moviePopularity;
+
+    Impl(unordered_map<uint32_t, UserProfile> &u,
+         unordered_map<uint32_t, Movie> &m,
+         unordered_map<string, int> &g,
+         unordered_map<uint32_t, vector<pair<uint32_t, float>>> &mtu,
+         unordered_map<uint32_t, vector<uint32_t>> &gtm,
+         float &gar,
+         unordered_map<uint32_t, float> &mar,
+         unordered_map<uint32_t, int> &mp)
+        : users(u), movies(m), genreToId(g), movieToUsers(mtu),
+          genreToMovies(gtm), globalAvgRating(gar),
+          movieAvgRatings(mar), moviePopularity(mp) {}
+
+    void loadRatings(const string &filename);
+    void loadMovies(const string &filename);
+    void calculateUserPreferences();
+    vector<uint32_t> loadUsersToRecommend(const string &filename);
+
+private:
+    struct alignas(64) ThreadData
+    {
+        unordered_map<uint32_t, UserProfile> users;
+        unordered_map<uint32_t, vector<pair<uint32_t, float>>> movieToUsers;
+        unordered_map<uint32_t, float> movieSums;
+        unordered_map<uint32_t, int> movieCounts;
+        double ratingSum = 0.0;
+        uint64_t ratingCount = 0;
+
+        ThreadData()
+        {
+            users.reserve(10000);
+            movieToUsers.reserve(10000);
+            movieSums.reserve(10000);
+            movieCounts.reserve(10000);
+        }
+    };
+
+    inline const char *skipWhitespace(const char *p, const char *end)
+    {
+        while (p < end && (*p == ' ' || *p == '\t'))
+            ++p;
+        return p;
+    }
+
+    inline const char *skipToNext(const char *p, const char *end)
+    {
+        while (p < end && *p != '\n' && *p != '\r')
+            ++p;
+        while (p < end && (*p == '\n' || *p == '\r'))
+            ++p;
+        return p;
+    }
+};
 
 DataLoader::DataLoader(
     unordered_map<uint32_t, UserProfile> &u,
@@ -25,19 +92,31 @@ DataLoader::DataLoader(
     unordered_map<uint32_t, vector<uint32_t>> &gtm,
     float &gar,
     unordered_map<uint32_t, float> &mar,
-    unordered_map<uint32_t, int> &mp) : users(u), movies(m), genreToId(g), movieToUsers(mtu),
-                                        genreToMovies(gtm), globalAvgRating(gar),
-                                        movieAvgRatings(mar), moviePopularity(mp) {}
+    unordered_map<uint32_t, int> &mp)
+    : pimpl(make_unique<Impl>(u, m, g, mtu, gtm, gar, mar, mp)) {}
+
+DataLoader::~DataLoader() = default;
 
 void DataLoader::loadRatings(const string &filename)
 {
-    cout << "Carregando ratings usando mmap e std::from_chars..." << endl;
-    auto start = high_resolution_clock::now();
+    pimpl->loadRatings(filename);
+}
 
-    int fd = open(filename.c_str(), O_RDONLY);
+void DataLoader::loadMovies(const string &filename)
+{
+    pimpl->loadMovies(filename);
+}
+
+vector<uint32_t> DataLoader::loadUsersToRecommend(const string &filename)
+{
+    return pimpl->loadUsersToRecommend(filename);
+}
+
+void DataLoader::Impl::loadRatings(const string &filename)
+{
+    const int fd = open(filename.c_str(), O_RDONLY);
     if (fd == -1)
     {
-        cerr << "Erro ao abrir " << filename << endl;
         return;
     }
 
@@ -45,134 +124,137 @@ void DataLoader::loadRatings(const string &filename)
     if (fstat(fd, &sb) == -1)
     {
         close(fd);
-        cerr << "Erro ao obter status do arquivo " << filename << endl;
         return;
     }
 
-    char *file_data = (char *)mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    const char *const file_data = static_cast<const char *>(
+        mmap(nullptr, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
     if (file_data == MAP_FAILED)
     {
         close(fd);
-        cerr << "Erro ao mapear arquivo na memoria." << endl;
         return;
     }
     close(fd);
 
-    madvise(file_data, sb.st_size, MADV_SEQUENTIAL);
+    madvise(const_cast<char *>(file_data), sb.st_size, MADV_SEQUENTIAL);
 
-    int num_threads = min((int)thread::hardware_concurrency(), max(1, (int)(sb.st_size / 5000000)));
-    cout << "Usando " << num_threads << " threads para processar " << sb.st_size / (1024 * 1024) << " MB de dados" << endl;
-
-    // OTIMIZAÇÃO: Alinha a estrutura de dados da thread para evitar "false sharing"
-    struct alignas(64) ThreadData
-    {
-        unordered_map<uint32_t, UserProfile> users;
-        unordered_map<uint32_t, vector<pair<uint32_t, float>>> movieToUsers;
-        unordered_map<uint32_t, float> movieSums;
-        unordered_map<uint32_t, int> movieCounts;
-        double ratingSum = 0;
-        uint64_t ratingCount = 0;
-    };
+    const int num_threads = min(static_cast<int>(thread::hardware_concurrency()),
+                                max(1, static_cast<int>(sb.st_size / 5000000)));
 
     vector<ThreadData> threadData(num_threads);
     vector<thread> threads;
+    threads.reserve(num_threads);
 
-    size_t chunk_size = sb.st_size / num_threads;
+    const size_t chunk_size = sb.st_size / num_threads;
+    const char *const file_end = file_data + sb.st_size;
 
     for (int t = 0; t < num_threads; ++t)
     {
-        char *chunk_start = file_data + t * chunk_size;
-        char *chunk_end = (t == num_threads - 1) ? (file_data + sb.st_size) : (chunk_start + chunk_size);
+        const char *chunk_start = file_data + t * chunk_size;
+        const char *chunk_end = (t == num_threads - 1) ? file_end : (chunk_start + chunk_size);
 
         if (t > 0)
         {
             while (chunk_start < chunk_end && *(chunk_start - 1) != '\n')
             {
-                chunk_start++;
+                ++chunk_start;
             }
         }
 
-        threads.emplace_back([&, chunk_start, chunk_end, t]()
+        threads.emplace_back([this, chunk_start, chunk_end, t, &threadData]()
                              {
-            auto &data = threadData[t];
-            // CORREÇÃO: O ponteiro 'p' agora é const, pois apenas lemos do buffer.
-            const char *p = chunk_start;
-
+            ThreadData& data = threadData[t];
+            const char* p = chunk_start;
+            
             while (p < chunk_end) {
-                while (p < chunk_end && (*p == '\n' || *p == '\r')) p++;
+                p = skipToNext(p, chunk_end);
                 if (p >= chunk_end) break;
-
-                // OTIMIZAÇÃO: Usa std::from_chars para parsing de inteiros
+                
                 uint32_t userId;
-                auto [p1, ec1] = from_chars(p, chunk_end, userId);
-                if (ec1 != errc()) { p++; continue; }
-                p = p1; // Agora a atribuição é válida (const char* = const char*)
+                const auto [p1, ec1] = std::from_chars(p, chunk_end, userId);
+                if (ec1 != std::errc{}) continue;
+                p = skipWhitespace(p1, chunk_end);
 
-                while (p < chunk_end && (*p == ' ' || *p == '\t')) p++;
-
-                UserProfile &user = data.users[userId];
-                user.ratings.clear(); 
+                UserProfile& user = data.users[userId];
+                user.ratings.reserve(100); 
                 
                 float sumRatings = 0.0f;
-                int ratings_in_line = 0;
+                int ratingsCount = 0;
 
                 while (p < chunk_end && *p != '\n' && *p != '\r') {
-                    // OTIMIZAÇÃO: Usa std::from_chars para parsing de inteiros
                     uint32_t movieId;
-                    auto [p2, ec2] = from_chars(p, chunk_end, movieId);
-                    if (ec2 != errc()) { p++; continue; }
-                    p = p2; // Válido
-
-                    p++; // Pula ':'
-
-                    // OTIMIZAÇÃO: Usa std::from_chars para parsing de floats
+                    const auto [p2, ec2] = std::from_chars(p, chunk_end, movieId);
+                    if (ec2 != std::errc{}) break;
+                    p = p2;
+                    if (p >= chunk_end || *p != ':') break;
+                    ++p; 
+                    
                     float rating;
-                    auto [p3, ec3] = from_chars(p, chunk_end, rating);
-                    if (ec3 != errc()) { p++; continue; }
-                    p = p3; // Válido
-
-                    while (p < chunk_end && (*p == ' ' || *p == '\t')) p++;
-
+                    const auto [p3, ec3] = std::from_chars(p, chunk_end, rating);
+                    if (ec3 != std::errc{}) break;
+                    p = skipWhitespace(p3, chunk_end);
+                    
                     user.ratings.emplace_back(movieId, rating);
                     data.movieToUsers[movieId].emplace_back(userId, rating);
-
                     sumRatings += rating;
                     data.movieSums[movieId] += rating;
-                    data.movieCounts[movieId]++;
-                    ratings_in_line++;
+                    ++data.movieCounts[movieId];
+                    ++ratingsCount;
                 }
                 
-                if (ratings_in_line > 0) {
+                if (ratingsCount > 0) {
                     data.ratingSum += sumRatings;
-                    data.ratingCount += ratings_in_line;
-                    user.avgRating = sumRatings / ratings_in_line;
-                    sort(user.ratings.begin(), user.ratings.end());
+                    data.ratingCount += ratingsCount;
+                    user.avgRating = sumRatings / ratingsCount;
+                    
+                    if (user.ratings.size() > 1) {
+                        std::sort(user.ratings.begin(), user.ratings.end());
+                    }
                 }
-                while (p < chunk_end && (*p == '\n' || *p == '\r')) p++;
             } });
     }
 
     for (auto &t : threads)
-    {
         t.join();
+    munmap(const_cast<char *>(file_data), sb.st_size);
+
+    size_t totalUsers = 0;
+    unordered_map<uint32_t, size_t> movieRatingCounts;
+    for (const auto &data : threadData)
+    {
+        totalUsers += data.users.size();
+        for (const auto &[movieId, ratings] : data.movieToUsers)
+        {
+            movieRatingCounts[movieId] += ratings.size();
+        }
     }
 
-    munmap(file_data, sb.st_size);
+    users.reserve(totalUsers);
+    movieToUsers.reserve(movieRatingCounts.size());
+    movieAvgRatings.reserve(movieRatingCounts.size());
+    moviePopularity.reserve(movieRatingCounts.size());
 
-    // O merge dos resultados permanece o mesmo
+    for (const auto &[movieId, count] : movieRatingCounts)
+    {
+        movieToUsers[movieId].reserve(count);
+    }
+
     uint64_t totalRatings = 0;
     double totalSum = 0.0;
 
-    for (const auto &data : threadData)
+    for (auto &data : threadData)
     {
-        for (const auto &[userId, profile] : data.users)
+        for (auto &[userId, profile] : data.users)
         {
-            users[userId] = profile;
+            users[userId] = move(profile);
         }
 
-        for (const auto &[movieId, ratings] : data.movieToUsers)
+        for (auto &[movieId, ratings] : data.movieToUsers)
         {
-            movieToUsers[movieId].insert(movieToUsers[movieId].end(), ratings.begin(), ratings.end());
+            auto &target = movieToUsers[movieId];
+            target.insert(target.end(),
+                          std::make_move_iterator(ratings.begin()),
+                          std::make_move_iterator(ratings.end()));
         }
 
         totalSum += data.ratingSum;
@@ -188,32 +270,21 @@ void DataLoader::loadRatings(const string &filename)
         }
     }
 
-    globalAvgRating = (totalRatings > 0) ? (totalSum / totalRatings) : 0.0f;
+    globalAvgRating = totalRatings > 0 ? static_cast<float>(totalSum / totalRatings) : 0.0f;
 
     for (auto &[movieId, sum] : movieAvgRatings)
     {
-        if (moviePopularity[movieId] > 0)
-        {
-            sum /= moviePopularity[movieId];
-        }
+        const int count = moviePopularity[movieId];
+        if (count > 0)
+            sum /= count;
     }
-
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start);
-    cout << "Ratings carregados em " << duration.count() << "ms" << endl;
-    cout << "Usuários: " << users.size() << ", Ratings: " << totalRatings << endl;
 }
 
-// As funções loadMovies, calculateUserPreferences e loadUsersToRecommend permanecem inalteradas
-void DataLoader::loadMovies(const string &filename)
+void DataLoader::Impl::loadMovies(const string &filename)
 {
-    cout << "Carregando filmes..." << endl;
-    auto start = high_resolution_clock::now();
-
-    ifstream file(filename);
+    std::ifstream file(filename);
     if (!file.is_open())
     {
-        cerr << "Erro ao abrir " << filename << endl;
         return;
     }
 
@@ -221,32 +292,45 @@ void DataLoader::loadMovies(const string &filename)
     genreToMovies.reserve(25);
 
     string line;
-    getline(file, line); // Skip header
+    line.reserve(256);
+    std::getline(file, line); // Skip header
 
     int genreCounter = 0;
-
-    while (getline(file, line))
+    while (std::getline(file, line))
     {
-        istringstream iss(line);
-        string movieIdStr, title, genres;
+        if (line.empty())
+            continue;
 
-        getline(iss, movieIdStr, ',');
-        getline(iss, title, ',');
-        getline(iss, genres);
+        const auto first_comma = line.find(',');
+        if (first_comma == string::npos)
+            continue;
 
-        if (!title.empty() && title.front() == '"')
-            title = title.substr(1, title.length() - 2);
+        const auto last_comma = line.rfind(',');
+        if (last_comma == string::npos || last_comma <= first_comma)
+        {
+            const string movieIdStr = line.substr(0, first_comma);
+            const uint32_t movieId = std::stoul(movieIdStr);
+            Movie &movie = movies[movieId];
+            movie.genreBitmask = 0;
+            continue;
+        }
 
-        uint32_t movieId = stoul(movieIdStr);
+        const string movieIdStr = line.substr(0, first_comma);
+        const string genres = line.substr(last_comma + 1);
+
+        const uint32_t movieId = std::stoul(movieIdStr);
         Movie &movie = movies[movieId];
-        movie.title = title;
         movie.genreBitmask = 0;
         movie.genres.reserve(5);
 
-        istringstream genreStream(genres);
-        string genre;
-        while (getline(genreStream, genre, '|'))
+        std::string_view genreView(genres);
+        size_t pos = 0;
+        while (pos < genreView.length())
         {
+            const size_t endPos = genreView.find('|', pos);
+            const size_t actualEnd = (endPos == string::npos) ? genreView.length() : endPos;
+
+            const string genre(genreView.substr(pos, actualEnd - pos));
             movie.genres.push_back(genre);
 
             if (genreToId.find(genre) == genreToId.end())
@@ -254,151 +338,101 @@ void DataLoader::loadMovies(const string &filename)
                 genreToId[genre] = genreCounter++;
             }
 
-            int genreId = genreToId[genre];
-            movie.genreBitmask |= (1 << genreId);
+            const int genreId = genreToId[genre];
+            movie.genreBitmask |= (1U << genreId);
             genreToMovies[genreId].push_back(movieId);
+
+            pos = actualEnd + 1;
         }
     }
-
-    auto parseEnd = high_resolution_clock::now();
-    cout << "Parse dos filmes: " << duration_cast<milliseconds>(parseEnd - start).count() << "ms" << endl;
 
     calculateUserPreferences();
-
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start);
-    cout << "Filmes carregados em " << duration.count() << "ms" << endl;
 }
 
-void DataLoader::calculateUserPreferences()
+void DataLoader::Impl::calculateUserPreferences()
 {
-    cout << "Calculando preferências de " << users.size() << " usuários..." << endl;
-    auto start = high_resolution_clock::now();
-
-    if (users.size() < 10000)
+    vector<UserProfile *> userPtrs;
+    userPtrs.reserve(users.size());
+    for (auto &[userId, profile] : users)
     {
-        for (auto &[userId, user] : users)
-        {
-            unordered_map<int, float> genreScores;
-            for (const auto &[movieId, rating] : user.ratings)
-            {
-                if (rating >= Config::MIN_RATING && movies.count(movieId))
-                {
-                    for (const auto &genre : movies.at(movieId).genres)
-                    {
-                        genreScores[genreToId[genre]] += rating - Config::MIN_RATING;
-                    }
-                }
-            }
-
-            // CORREÇÃO: Constrói o vetor explicitamente para evitar problemas de compilação.
-            vector<pair<int, float>> sortedGenres;
-            sortedGenres.reserve(genreScores.size());
-            for (const auto &p : genreScores)
-            {
-                sortedGenres.push_back(p);
-            }
-
-            sort(sortedGenres.begin(), sortedGenres.end(),
-                 [](const auto &a, const auto &b)
-                 { return a.second > b.second; });
-
-            user.preferredGenres = 0;
-            for (int i = 0; i < min(5, (int)sortedGenres.size()); ++i)
-            {
-                user.preferredGenres |= (1 << sortedGenres[i].first);
-            }
-        }
+        userPtrs.push_back(&profile);
     }
-    else
+
+    const int num_threads = min(static_cast<int>(thread::hardware_concurrency()),
+                                max(1, static_cast<int>(userPtrs.size() / 5000)));
+    vector<thread> threads;
+    threads.reserve(num_threads);
+    const size_t chunk_size = userPtrs.size() / num_threads;
+
+    for (int t = 0; t < num_threads; ++t)
     {
-        vector<UserProfile *> userPtrs;
-        userPtrs.reserve(users.size());
-        for (auto &pair : users)
-        {
-            userPtrs.push_back(&pair.second);
-        }
+        const size_t start_idx = t * chunk_size;
+        const size_t end_idx = (t == num_threads - 1) ? userPtrs.size() : (t + 1) * chunk_size;
 
-        const int num_threads = min((int)thread::hardware_concurrency(), max(1, (int)userPtrs.size() / 5000));
-        cout << "Usando " << num_threads << " threads para calcular preferências..." << endl;
-
-        vector<thread> threads;
-        atomic<int> processed(0);
-        size_t chunk_size = userPtrs.size() / num_threads;
-
-        for (int t = 0; t < num_threads; t++)
-        {
-            size_t start_idx = t * chunk_size;
-            size_t end_idx = (t == num_threads - 1) ? userPtrs.size() : (t + 1) * chunk_size;
-
-            threads.emplace_back([&, start_idx, end_idx]()
-                                 {
-                for (size_t i = start_idx; i < end_idx; i++) {
-                    auto& user = *userPtrs[i];
-                    unordered_map<int, float> genreScores;
-                    
-                    for (const auto &[movieId, rating] : user.ratings) {
-                        if (rating >= Config::MIN_RATING) {
-                            auto movieIt = movies.find(movieId);
-                            if (movieIt != movies.end()) {
-                                uint32_t movieGenres = movieIt->second.genreBitmask;
-                                for (int g = 0; g < 32 && movieGenres; g++) {
-                                    if (movieGenres & (1 << g)) {
-                                        genreScores[g] += rating - Config::MIN_RATING;
-                                        movieGenres &= ~(1 << g);
-                                    }
+        threads.emplace_back([this, &userPtrs, start_idx, end_idx]()
+                             {
+            for (size_t i = start_idx; i < end_idx; ++i) {
+                UserProfile& user = *userPtrs[i];
+                unordered_map<int, float> genreScores;
+                genreScores.reserve(20);
+                
+                for (const auto& [movieId, rating] : user.ratings) {
+                    if (rating >= Config::MIN_RATING) {
+                        const auto movieIt = movies.find(movieId);
+                        if (movieIt != movies.end()) {
+                            uint32_t movieGenres = movieIt->second.genreBitmask;
+                            for (int g = 0; g < 32 && movieGenres; ++g) {
+                                if (movieGenres & (1U << g)) {
+                                    genreScores[g] += rating - Config::MIN_RATING;
+                                    movieGenres &= ~(1U << g);
                                 }
                             }
                         }
                     }
-                    
-                    if (!genreScores.empty()) {
-                        vector<pair<float, int>> sortedGenres;
-                        sortedGenres.reserve(genreScores.size());
-                        for (const auto& [genreId, score] : genreScores) {
-                            sortedGenres.push_back({score, genreId});
-                        }
-                        
-                        int topN = min(5, (int)sortedGenres.size());
-                        partial_sort(sortedGenres.begin(), sortedGenres.begin() + topN, sortedGenres.end(), greater<pair<float, int>>());
-                        
-                        user.preferredGenres = 0;
-                        for (int j = 0; j < topN; j++) {
-                            user.preferredGenres |= (1 << sortedGenres[j].second);
-                        }
+                }
+                
+                if (!genreScores.empty()) {
+                    vector<pair<float, int>> sortedGenres;
+                    sortedGenres.reserve(genreScores.size());
+                    for (const auto& [genreId, score] : genreScores) {
+                        sortedGenres.emplace_back(score, genreId);
                     }
                     
-                    int count = ++processed;
-                    if (count % 50000 == 0) {
-                        cout << "Processadas preferências de " << count << " usuários..." << endl;
+                    const int topN = min(5, static_cast<int>(sortedGenres.size()));
+                    std::partial_sort(sortedGenres.begin(), sortedGenres.begin() + topN, 
+                                    sortedGenres.end(), std::greater<pair<float, int>>());
+                    
+                    user.preferredGenres = 0;
+                    for (int j = 0; j < topN; ++j) {
+                        user.preferredGenres |= (1U << sortedGenres[j].second);
                     }
-                } });
-        }
-        for (auto &t : threads)
-        {
-            t.join();
-        }
+                }
+            } });
     }
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(end - start);
-    cout << "Preferências calculadas em " << duration.count() << "ms" << endl;
+
+    for (auto &t : threads)
+        t.join();
 }
 
-vector<uint32_t> DataLoader::loadUsersToRecommend(const string &filename)
+vector<uint32_t> DataLoader::Impl::loadUsersToRecommend(const string &filename)
 {
     vector<uint32_t> userIds;
-    ifstream file(filename);
+    userIds.reserve(1000);
 
+    std::ifstream file(filename);
     if (!file.is_open())
     {
-        cerr << "Erro ao abrir " << filename << endl;
         return userIds;
     }
 
     string line;
-    while (getline(file, line))
+    line.reserve(32);
+    while (std::getline(file, line))
     {
-        userIds.push_back(stoul(line));
+        if (!line.empty())
+        {
+            userIds.push_back(std::stoul(line));
+        }
     }
 
     return userIds;

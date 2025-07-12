@@ -1,7 +1,5 @@
 #include "SimilarityCalculator.hpp"
-#include "Config.hpp"
-#include <cmath>
-#include <algorithm>
+
 
 using namespace std;
 
@@ -43,7 +41,6 @@ float SimilarityCalculator::calculateCosineSimilarity(uint32_t user1, uint32_t u
     float normA = 0.0f, normB = 0.0f;
     int commonItems = 0;
 
-    // Encontra filmes em comum usando merge (arrays ordenados)
     size_t i = 0, j = 0;
     while (i < ratings1.size() && j < ratings2.size())
     {
@@ -60,7 +57,6 @@ float SimilarityCalculator::calculateCosineSimilarity(uint32_t user1, uint32_t u
             float r1 = ratings1[i].second;
             float r2 = ratings2[j].second;
 
-            // Cosine similarity calculation
             dotProduct += r1 * r2;
             normA += r1 * r1;
             normB += r2 * r2;
@@ -74,11 +70,9 @@ float SimilarityCalculator::calculateCosineSimilarity(uint32_t user1, uint32_t u
     if (commonItems < Config::MIN_COMMON_ITEMS)
         return 0.0f;
 
-    // Calcula a similaridade do cosseno
     float denominator = sqrt(normA) * sqrt(normB);
     float similarity = (denominator == 0.0f) ? 0.0f : dotProduct / denominator;
 
-    // Armazena no cache
     {
         lock_guard<mutex> lock(cacheMutex);
         cache[key] = similarity;

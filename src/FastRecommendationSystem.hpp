@@ -1,10 +1,7 @@
 #ifndef FAST_RECOMMENDATION_SYSTEM_H
 #define FAST_RECOMMENDATION_SYSTEM_H
 
-#include <unordered_map>
-#include <vector>
-#include <string>
-#include "DataStructures.hpp"
+#include "Config.hpp"
 #include "DataLoader.hpp"
 #include "SimilarityCalculator.hpp"
 #include "RecommendationEngine.hpp"
@@ -50,4 +47,4 @@ private:
     void printRecommendations(uint32_t userId, const std::vector<Recommendation> &recommendations);
 };
 
-#endif // FAST_RECOMMENDATION_SYSTEM_H
+#endif 

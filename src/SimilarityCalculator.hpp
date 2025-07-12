@@ -1,8 +1,7 @@
 #ifndef SIMILARITY_CALCULATOR_HPP
 #define SIMILARITY_CALCULATOR_HPP
 
-#include <unordered_map>
-#include <mutex>
+#include "Config.hpp"
 #include "DataStructures.hpp"
 
 class SimilarityCalculator
@@ -15,11 +14,10 @@ private:
 public:
     SimilarityCalculator(const std::unordered_map<uint32_t, UserProfile> &u);
 
-    // Calcula similaridade de Pearson entre dois usuários
     float calculateCosineSimilarity(uint32_t user1, uint32_t user2) const;
 
 private:
     uint64_t makeKey(uint32_t user1, uint32_t user2) const;
 };
 
-#endif // SIMILARITY_CALCULATOR_H
+#endif 

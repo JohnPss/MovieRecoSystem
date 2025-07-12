@@ -807,7 +807,3 @@ Este projeto é resultado da colaboração entre estudantes dedicados, cada um c
 - **Qualidade**: Comprometidos com a excelência em cada linha de código
 - **Aprendizado**: Crescemos constantemente através da troca de conhecimentos
 
-
-
-
-
