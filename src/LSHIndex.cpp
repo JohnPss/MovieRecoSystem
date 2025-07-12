@@ -1,9 +1,4 @@
 #include "LSHIndex.hpp"
-#include "DataStructures.hpp"
-#include <algorithm>
-#include <thread>
-#include <future>
-#include <cmath>
 
 // O include e o namespace para 'cout' e 'chrono' foram removidos.
 using namespace std;

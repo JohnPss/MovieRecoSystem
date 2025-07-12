@@ -1,10 +1,7 @@
 #ifndef RECOMMENDATION_ENGINE_H
 #define RECOMMENDATION_ENGINE_H
 
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
-#include <future>
+#include "Config.hpp"
 #include "DataStructures.hpp"
 #include "SimilarityCalculator.hpp"
 #include "LSHIndex.hpp"

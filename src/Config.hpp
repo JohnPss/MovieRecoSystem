@@ -1,9 +1,38 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <algorithm>
+#include <atomic>
+#include <charconv>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <future>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <memory>
+#include <mutex>
+#include <random>
 #include <string>
+#include <string_view>
 #include <thread>
-#include <cstdint> // Necessário para uint32_t
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 
 // Namespace para agrupar todas as configurações do sistema de recomendação.
 namespace Config

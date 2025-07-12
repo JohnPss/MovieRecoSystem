@@ -1,14 +1,5 @@
 #include "FastRecommendationSystem.hpp"
-#include "Config.hpp"
-#include <iostream>
-#include <iomanip>
 
-#include <memory>
-#include <fstream>
-#include <thread>
-#include <mutex>
-#include <algorithm>
-#include <filesystem>
 
 using namespace std;
 

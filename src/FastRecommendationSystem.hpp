@@ -1,10 +1,7 @@
 #ifndef FAST_RECOMMENDATION_SYSTEM_H
 #define FAST_RECOMMENDATION_SYSTEM_H
 
-#include <unordered_map>
-#include <vector>
-#include <string>
-#include "DataStructures.hpp"
+#include "Config.hpp"
 #include "DataLoader.hpp"
 #include "SimilarityCalculator.hpp"
 #include "RecommendationEngine.hpp"

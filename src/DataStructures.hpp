@@ -1,9 +1,8 @@
 #ifndef DATA_STRUCTURES_HPP
 #define DATA_STRUCTURES_HPP
 
-#include <vector>
-#include <string>
-#include <cstdint>
+#include "Config.hpp"
+
 
 // Estrutura para armazenar informações de um filme
 struct Movie

@@ -1,11 +1,9 @@
 #ifndef DATA_LOADER_HPP
 #define DATA_LOADER_HPP
 
-#include <cstdint>
-#include <string>
-#include <vector>
-#include <memory>
-#include <unordered_map>
+#include "Config.hpp"
+#include "DataLoader.hpp"
+#include "DataStructures.hpp"
 
 struct UserProfile;
 struct Movie;
