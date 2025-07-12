@@ -139,7 +139,7 @@ O sistema de recomendação segue uma sequência de etapas bem definidas para ca
 
 ![Fluxo de Execução do Sistema de Recomendação](assets/fluxograma_recomendacao.png)
 
-*Figura 1: Visão geral do fluxo de dados e processamento no sistema de recomendação.*
+**Visão geral do fluxo de dados e processamento no sistema de recomendação.**
 
 
 ### 📊 Estruturas de Dados
