@@ -731,7 +731,7 @@ Este comando fará com que o programa:
 
 ## 🤝 **Sobre Nossa Colaboração**
 
-> **"Grandes coisas no negócio nunca são feitas por uma pessoa. Elas são feitas por uma equipe de pessoas."**
+> **"Cinco mentes, um objetivo: criar o impossível através da colaboração."**
 
 Este projeto é resultado da colaboração entre estudantes dedicados, cada um contribuindo com suas habilidades únicas e perspectivas para criar algo incrível. Juntos, combinamos conhecimento técnico, criatividade e paixão pela tecnologia.
 
