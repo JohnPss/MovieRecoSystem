@@ -13,9 +13,7 @@ int main(int argc, char *argv[])
     try
     {
         if (process_ratings_file() != 0)
-        {
-            return 1;
-        }
+        { return 1; }
 
         FastRecommendationSystem system;
         system.loadData();
