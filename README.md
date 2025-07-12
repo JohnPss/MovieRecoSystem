@@ -237,7 +237,7 @@ As abordagens propostas para otimizar o sistema de recomendação MovieLens fora
 
 A implementação do sistema de recomendação foi estruturada em etapas distintas, conforme detalhado na Modelagem da Aplicação: um **pré-processamento** dos dados brutos, um **carregamento dos dados e construção do índice LSH** (que pode ser considerado o "treinamento" do modelo de vizinhança), e a **fase de recomendação**, onde o sistema gera sugestões personalizadas para usuários específicos. Durante a fase de carregamento e construção do índice LSH, o sistema mapeia as avaliações de usuários e filmes, construindo estruturas de dados eficientes para representá-los e para permitir a busca rápida por usuários similares. Na fase de recomendação, o sistema classifica e ranqueia filmes para o usuário-alvo, utilizando uma combinação de técnicas como filtragem colaborativa, conteúdo e popularidade para determinar as melhores sugestões.
 
-### Arquivos
+### 📁Arquivos
 
 Para a implementação do sistema de recomendação MovieLens, o projeto foi organizado em um diretório principal, contendo subdiretórios para armazenar os arquivos de código-fonte, os datasets utilizados e os arquivos de saída. 
 A seguir, a estrutura do diretório do projeto:
@@ -327,6 +327,9 @@ A implementação do sistema de recomendação MovieLens faz uso extensivo da St
     * `preProcessamento.hpp`: Contém as funções para o pré-processamento inicial do arquivo `ratings.csv`, incluindo filtragem e formatação para `input.dat`.
 
 * **Bibliotecas Padrão do C++ (STL e outras):**
+  
+  <img src="https://img.shields.io/badge/STL-C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" alt="STL">
+  
     * `iostream`: Essencial para operações de entrada e saída de dados no console.
     * `fstream`: Utilizada para manipulação de arquivos, como leitura de `movies.csv` e escrita dos arquivos de saída (`output.dat`, `debug_recommendations.txt`).
     * `string`: Para manipulação de cadeias de caracteres, como títulos de filmes e gêneros.
@@ -576,17 +579,19 @@ Os mecanismos de fallback, como o preenchimento de listas de candidatos com "qua
 
 Este trabalho abre portas para futuras pesquisas, incluindo a exploração de modelos de similaridade mais avançados, técnicas de filtragem colaborativa baseadas em itens, e a adaptação para fluxos de dados em tempo real. A contínua evolução dessas abordagens poderá aprimorar ainda mais a precisão e a eficiência, solidificando sua relevância no campo dos sistemas de recomendação.
 
-## Configuração do Ambiente
+## 🔧Configuração do Ambiente
 
 Para garantir a correta compilação e execução do projeto, certifique-se de que o ambiente de desenvolvimento esteja configurado com as seguintes especificações:
 
 - Sistema Operacional: Linux Ubuntu 24.04 LTS.
- 
+-  
 - Compilador: GCC versão 13 ou superior (g++ para C++). Certifique que esta com a versão atualizada do compilador:
 
-    ``` bash
-    g++ --version
-    ```
+      ``` bash
+      g++ --version
+      ```
+    
+    
 Caso precise instalar ou atualizar o compilador e as ferramentas de build essenciais no Ubuntu, utilize os seguintes comandos:
         
     ``` bash
@@ -595,9 +600,15 @@ Caso precise instalar ou atualizar o compilador e as ferramentas de build essenc
     ```
 - Biblioteca Padrão: O projeto utiliza exclusivamente a biblioteca padrão da linguagem C++. Não há dependências de bibliotecas de terceiros externas.
 
-## Como Compilar e Executar
+## 🛠️Como Compilar e Executar
 
 Este projeto utiliza um `Makefile` para simplificar e padronizar os processos de compilação e execução. É fundamental seguir os comandos especificados para garantir a reprodutibilidade do ambiente.
+
+### Clone o Repositório
+  
+    ``` bash
+    git clone https://github.com/JohnPss/MovieRecoSystem
+    ```
 
 ### Pré-requisitos
 
@@ -629,9 +640,10 @@ make
 ### Execução
 Após a compilação bem-sucedida, o sistema pode ser executado. O comando de execução disparará o processo de pré-processamento (se `input.dat` não existir ou estiver desatualizado), o processo de recomendação para os usuários listados em `explore.dat` e salvará os resultados em 
 `output.dat`.
-``` Bash
-make run
-```
+    
+    ``` bash
+    make run
+    ```
 Este comando fará com que o programa:
 
 - Verifique/Gere `datasets/input.dat`: Se o `input.dat` não existir ou precisar ser atualizado, o sistema realizará o pré-processamento dos dados brutos de `ml-25m/` e gerará este arquivo.
@@ -741,7 +753,7 @@ Este projeto é resultado da colaboração entre estudantes dedicados, cada um c
 - **Qualidade**: Comprometidos com a excelência em cada linha de código
 - **Aprendizado**: Crescemos constantemente através da troca de conhecimentos
 
----
+
 
 <div align="center">
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=16&pause=1000&color=6B7280&center=true&vCenter=true&width=600&lines=Obrigado+por+visitar+nosso+projeto!;Sinta-se+à+vontade+para+contribuir+🚀" alt="Typing SVG" />
