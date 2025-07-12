@@ -658,17 +658,17 @@ Para garantir a correta compilação e execução do projeto, certifique-se de q
 -  
 - Compilador: GCC versão 13 ou superior (g++ para C++). Certifique que esta com a versão atualizada do compilador:
 
-      ``` bash
-      g++ --version
-      ```
+``` bash
+g++ --version
+```
     
     
 Caso precise instalar ou atualizar o compilador e as ferramentas de build essenciais no Ubuntu, utilize os seguintes comandos:
         
-    ``` bash
-    sudo apt update
-    sudo apt install build-essential g++
-    ```
+``` bash
+sudo apt update
+sudo apt install build-essential g++
+```
 - Biblioteca Padrão: O projeto utiliza exclusivamente a biblioteca padrão da linguagem C++. Não há dependências de bibliotecas de terceiros externas.
 
 ## 💻 Como Compilar e Executar
@@ -677,9 +677,9 @@ Este projeto utiliza um `Makefile` para simplificar e padronizar os processos de
 
 ### Clone o Repositório
   
-    ``` bash
-    git clone https://github.com/JohnPss/MovieRecoSystem
-    ```
+``` bash
+git clone https://github.com/JohnPss/MovieRecoSystem
+```
 
 ### Pré-requisitos
 
@@ -712,9 +712,9 @@ make
 Após a compilação bem-sucedida, o sistema pode ser executado. O comando de execução disparará o processo de pré-processamento (se `input.dat` não existir ou estiver desatualizado), o processo de recomendação para os usuários listados em `explore.dat` e salvará os resultados em 
 `output.dat`.
     
-    ``` bash
-    make run
-    ```
+```       
+make run
+```
 Este comando fará com que o programa:
 
 - Verifique/Gere `datasets/input.dat`: Se o `input.dat` não existir ou precisar ser atualizado, o sistema realizará o pré-processamento dos dados brutos de `ml-25m/` e gerará este arquivo.
