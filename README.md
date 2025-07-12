@@ -112,6 +112,12 @@ O desempenho do algoritmo será avaliado por critérios como tempo de execução
 ### Objetivo Geral
 
 O objetivo geral deste trabalho é desenvolver e otimizar um sistema de recomendação robusto e eficiente, utilizando a base de dados MovieLens 25M, focado em entregar recomendações de alta qualidade em tempo hábil. Busca-se aprimorar a precisão das recomendações e a eficiência computacional, com ênfase na fase de geração de recomendações, visando reduzir o tempo de execução e aumentar a relevância das sugestões para os usuários.
+#### Métricas de Desempenho
+
+A avaliação do nosso sistema de recomendação é realizada com base nos seguintes critérios, conforme as diretrizes do trabalho:
+* **Tempo de Execução:** Menor tempo médio de execução, medido em segundos, para todo o processo de recomendação, com um limite de 2.5 segundos por recomendação/usuário.
+* **Qualidade da Recomendação:** Avaliação da cobertura (diversidade de recomendações) e precisão (relevância das recomendações).
+* **Consumo de Memória:** Avaliado através de medições para garantir a eficiência do uso de recursos.
 
 ### Objetivos Específicos
 
@@ -179,12 +185,6 @@ No contexto de sistemas de recomendação, o LSH é utilizado para:
 
 A configuração do LSH (número de funções hash, bandas e tabelas) é crucial para equilibrar o *recall* (encontrar todos os similares) e a *precisão* (evitar falsos positivos). Nosso sistema utiliza uma configuração otimizada para maximizar as colisões entre usuários verdadeiramente similares.
 
-### Métricas de Desempenho
-
-A avaliação do nosso sistema de recomendação é realizada com base nos seguintes critérios, conforme as diretrizes do trabalho:
-* **Tempo de Execução:** Menor tempo médio de execução, medido em segundos, para todo o processo de recomendação, com um limite de 2.5 segundos por recomendação/usuário.
-* **Qualidade da Recomendação:** Avaliação da cobertura (diversidade de recomendações) e precisão (relevância das recomendações).
-* **Consumo de Memória:** Avaliado através de medições para garantir a eficiência do uso de recursos.
 
 ## 🔬 Modelagem da Aplicação
 
