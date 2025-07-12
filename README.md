@@ -751,6 +751,35 @@ Este comando fará com que o programa:
 <table align="center">
   <tr>
     <td align="center">
+      <a href="https://github.com/HachemAhmed">
+        <img src="https://github.com/HachemAhmed.png" width="100px;" alt="Ahmed Hachem"/><br>
+        <sub><b>Ahmed Hachem</b></sub>
+      </a><br>
+      <a href="https://github.com/HachemAhmed" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/alvaroajs">
+        <img src="https://github.com/alvaroajs.png" width="100px;" alt="Alvaro Silva"/><br>
+        <sub><b>Alvaro Silva</b></sub>
+      </a><br>
+      <a href="https://github.com/alvaroajs" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/BernardoSilvaAndrade">
+        <img src="https://github.com/BernardoSilvaAndrade.png" width="100px;" alt="Bernardo Silva Andrade"/><br>
+        <sub><b>Bernardo Silva Andrade</b></sub>
+      </a><br>
+      <a href="https://github.com/BernardoSilvaAndrade" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
       <a href="https://github.com/JohnPss">
         <img src="https://github.com/JohnPss.png" width="100px;" alt="João Pedro Siqueira"/><br>
         <sub><b>João Pedro Siqueira</b></sub>
@@ -769,35 +798,6 @@ Este comando fará com que o programa:
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/HachemAhmed">
-        <img src="https://github.com/HachemAhmed.png" width="100px;" alt="Ahmed Hachem"/><br>
-        <sub><b>Ahmed Hachem</b></sub>
-      </a><br>
-      <a href="https://github.com/HachemAhmed" title="GitHub">
-        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/BernardoSilvaAndrade">
-        <img src="https://github.com/BernardoSilvaAndrade.png" width="100px;" alt="Bernardo Silva Andrade"/><br>
-        <sub><b>Bernardo Silva Andrade</b></sub>
-      </a><br>
-      <a href="https://github.com/BernardoSilvaAndrade" title="GitHub">
-        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/alvaroajs">
-        <img src="https://github.com/alvaroajs.png" width="100px;" alt="Alvaro Silva"/><br>
-        <sub><b>Alvaro Silva</b></sub>
-      </a><br>
-      <a href="https://github.com/alvaroajs" title="GitHub">
-        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
-      </a>
-    </td>
-    <td align="center">
       <img src="https://via.placeholder.com/100x100/6366F1/FFFFFF?text=+" width="100px;" alt="Junte-se a nós"/><br>
       <sub><b>Junte-se a nós!</b></sub><br>
       <a href="#" title="Contribuir">
@@ -806,7 +806,6 @@ Este comando fará com que o programa:
     </td>
   </tr>
 </table>
-
 ---
 
 ## 📊 **Estatísticas da Equipe**
@@ -820,8 +819,6 @@ Este comando fará com que o programa:
 ---
 
 ## 🤝 **Sobre Nossa Colaboração**
-
-> **"Cinco mentes, um objetivo: criar o impossível através da colaboração."**
 
 Este projeto é resultado da colaboração entre estudantes dedicados, cada um contribuindo com suas habilidades únicas e perspectivas para criar algo incrível. Juntos, combinamos conhecimento técnico, criatividade e paixão pela tecnologia.
 
