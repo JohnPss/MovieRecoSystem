@@ -4,13 +4,6 @@
 <img src="assets/img.png" alt="Descrição" width="600" height="500"/>
 </div>
 
-<div align='center'>
-Algoritmos e Estruturas de Dados I <br>
-Engenharia de Computação <br>
-Prof. Michel Pires da Silva <br>
-CEFET-MG Campus V <br>
-2025/1  
-</div>
 <p align="center">
   <img src="https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++">
   <img src="https://img.shields.io/badge/GCC-orange?style=for-the-badge&logo=gnu-compiler-collection&logoColor=white" alt="GCC">
@@ -20,6 +13,13 @@ CEFET-MG Campus V <br>
   <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
   <img src="https://img.shields.io/badge/Kaggle-20BEFF?style=for-the-badge&logo=kaggle&logoColor=white" alt="Kaggle">
 <img src="https://img.shields.io/badge/-Makefile-red?style=for-the-badge&logo=gnu-make&logoColor=white" alt="Makefile"></p>
+<div align='center'>
+Algoritmos e Estruturas de Dados I <br>
+Engenharia de Computação <br>
+Prof. Michel Pires da Silva <br>
+CEFET-MG Campus V <br>
+2025/1  
+</div>
 
 <details>
 <summary><h2>📋 Índice</h2></summary>
