@@ -645,3 +645,109 @@ Este comando fará com que o programa:
 - Grave as recomendações geradas no arquivo `outcome/output.dat`    .
 
 
+
+---
+
+# 👥 Equipe de Desenvolvimento
+
+<div align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=6366F1&center=true&vCenter=true&width=400&lines=Nossa+Equipe+de+Desenvolvedores;Trabalhando+juntos+para+inovar!" alt="Typing SVG" />
+</div>
+
+---
+
+## 🚀 **Nossos Desenvolvedores**
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/JohnPss">
+        <img src="https://github.com/JohnPss.png" width="100px;" alt="João Pedro Siqueira"/><br>
+        <sub><b>João Pedro Siqueira</b></sub>
+      </a><br>
+      <a href="https://github.com/JohnPss" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/joaovitor3105">
+        <img src="https://github.com/joaovitor3105.png" width="100px;" alt="João Vitor Lobato"/><br>
+        <sub><b>João Vitor Lobato</b></sub>
+      </a><br>
+      <a href="https://github.com/joaovitor3105" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/HachemAhmed">
+        <img src="https://github.com/HachemAhmed.png" width="100px;" alt="Ahmed Hachem"/><br>
+        <sub><b>Ahmed Hachem</b></sub>
+      </a><br>
+      <a href="https://github.com/HachemAhmed" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/BernardoSilvaAndrade">
+        <img src="https://github.com/BernardoSilvaAndrade.png" width="100px;" alt="Bernardo Silva Andrade"/><br>
+        <sub><b>Bernardo Silva Andrade</b></sub>
+      </a><br>
+      <a href="https://github.com/BernardoSilvaAndrade" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/alvaroajs">
+        <img src="https://github.com/alvaroajs.png" width="100px;" alt="Alvaro Silva"/><br>
+        <sub><b>Alvaro Silva</b></sub>
+      </a><br>
+      <a href="https://github.com/alvaroajs" title="GitHub">
+        <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/>
+      </a>
+    </td>
+    <td align="center">
+      <img src="https://via.placeholder.com/100x100/6366F1/FFFFFF?text=+" width="100px;" alt="Junte-se a nós"/><br>
+      <sub><b>Junte-se a nós!</b></sub><br>
+      <a href="#" title="Contribuir">
+        <img src="https://img.shields.io/badge/Contribuir-6366F1?style=for-the-badge&logo=github&logoColor=white" alt="Contribuir"/>
+      </a>
+    </td>
+  </tr>
+</table>
+
+---
+
+## 📊 **Estatísticas da Equipe**
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Desenvolvedores-5-blue?style=for-the-badge&logo=github" alt="Desenvolvedores">
+  <img src="https://img.shields.io/badge/Colaboração-100%25-green?style=for-the-badge&logo=handshake" alt="Colaboração">
+  <img src="https://img.shields.io/badge/Commits-∞-purple?style=for-the-badge&logo=git" alt="Commits">
+</div>
+
+---
+
+## 🤝 **Sobre Nossa Colaboração**
+
+> **"Grandes coisas no negócio nunca são feitas por uma pessoa. Elas são feitas por uma equipe de pessoas."**
+
+Este projeto é resultado da colaboração entre estudantes dedicados, cada um contribuindo com suas habilidades únicas e perspectivas para criar algo incrível. Juntos, combinamos conhecimento técnico, criatividade e paixão pela tecnologia.
+
+### 🎯 **Nossos Valores**
+- **Colaboração**: Trabalhamos juntos para alcançar objetivos comuns
+- **Inovação**: Buscamos sempre novas formas de resolver problemas
+- **Qualidade**: Comprometidos com a excelência em cada linha de código
+- **Aprendizado**: Crescemos constantemente através da troca de conhecimentos
+
+---
+
+<div align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=16&pause=1000&color=6B7280&center=true&vCenter=true&width=600&lines=Obrigado+por+visitar+nosso+projeto!;Sinta-se+à+vontade+para+contribuir+🚀" alt="Typing SVG" />
+</div>
+---
+
+
+
+
