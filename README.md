@@ -637,7 +637,7 @@ Os mecanismos de fallback, como o preenchimento de listas de candidatos com "qua
 
 Este trabalho abre portas para futuras pesquisas, incluindo a exploração de modelos de similaridade mais avançados, técnicas de filtragem colaborativa baseadas em itens, e a adaptação para fluxos de dados em tempo real. A contínua evolução dessas abordagens poderá aprimorar ainda mais a precisão e a eficiência, solidificando sua relevância no campo dos sistemas de recomendação.
 
-##🏆 Resultado na Competição
+## 🏆 Resultado na Competição
 
  Ficamos felizes em compartilhar que, na competição interna da disciplina AEDS-1 (Prof. Michel), nosso projeto foi escolhido como o melhor entre os trabalhos apresentados com base em critérios como velocidade, eficiência de memória, qualidade da documentação (README), clareza do código e apresentação.
 
