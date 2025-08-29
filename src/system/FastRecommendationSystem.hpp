@@ -1,11 +1,11 @@
 #ifndef FAST_RECOMMENDATION_SYSTEM_H
 #define FAST_RECOMMENDATION_SYSTEM_H
 
-#include "Config.hpp"
-#include "DataLoader.hpp"
-#include "SimilarityCalculator.hpp"
-#include "RecommendationEngine.hpp"
-#include "LSHIndex.hpp"
+#include "../core/Config.hpp"
+#include "../data/DataLoader.hpp"
+#include "../algorithms/SimilarityCalculator.hpp"
+#include "../algorithms/RecommendationEngine.hpp"
+#include "../algorithms/LSHIndex.hpp"
 
 class FastRecommendationSystem
 {

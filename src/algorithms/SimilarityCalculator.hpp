@@ -1,8 +1,8 @@
 #ifndef SIMILARITY_CALCULATOR_HPP
 #define SIMILARITY_CALCULATOR_HPP
 
-#include "Config.hpp"
-#include "DataStructures.hpp"
+#include "../core/Config.hpp"
+#include "../core/DataStructures.hpp"
 
 class SimilarityCalculator
 {

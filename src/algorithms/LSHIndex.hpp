@@ -1,8 +1,8 @@
 #ifndef LSH_INDEX_HPP
 #define LSH_INDEX_HPP
 
-#include "Config.hpp"
-#include "DataStructures.hpp"
+#include "../core/Config.hpp"
+#include "../core/DataStructures.hpp"
 
 
 struct MinHashSignature

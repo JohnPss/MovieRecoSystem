@@ -1,9 +1,9 @@
 #ifndef DATA_LOADER_HPP
 #define DATA_LOADER_HPP
 
-#include "Config.hpp"
+#include "../core/Config.hpp"
 #include "DataLoader.hpp"
-#include "DataStructures.hpp"
+#include "../core/DataStructures.hpp"
 
 struct UserProfile;
 struct Movie;

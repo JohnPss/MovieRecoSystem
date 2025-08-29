@@ -318,7 +318,7 @@ A implementação do sistema de recomendação foi estruturada em etapas distint
 
 ## 📁 Estrutura do Projeto
 
-A seguir, a estrutura do diretório do projeto, organizada para separar o código-fonte, os dados e os resultados:
+A seguir, a estrutura do diretório do projeto, organizada para separar o código-fonte em módulos bem definidos, os dados e os resultados:
 
 ```
 .
@@ -332,15 +332,24 @@ A seguir, a estrutura do diretório do projeto, organizada para separar o códig
 ├── ml-25m/
 │   └── ratings.csv, movies.csv, ...
 └── src/
-    ├── Config.hpp
-    ├── DataLoader.cpp/.hpp
-    ├── DataStructures.hpp
-    ├── FastRecommendation.cpp/.hpp
-    ├── LSHIndex.cpp/.hpp
-    ├── Main.cpp
-    ├── preProcessament.cpp/.hpp
-    ├── RecommendationEngine.cpp/.hpp
-    └── SimilarityCalculator.cpp/.hpp
+    ├── core/
+    │   ├── Config.hpp
+    │   └── DataStructures.hpp
+    ├── data/
+    │   ├── DataLoader.cpp
+    │   └── DataLoader.hpp
+    ├── algorithms/
+    │   ├── LSHIndex.cpp/.hpp
+    │   ├── RecommendationEngine.cpp/.hpp
+    │   └── SimilarityCalculator.cpp/.hpp
+    ├── preprocessing/
+    │   ├── preProcessament.cpp
+    │   └── preProcessament.hpp
+    ├── system/
+    │   ├── FastRecommendationSystem.cpp
+    │   └── FastRecommendationSystem.hpp
+    └── main/
+        └── Main.cpp
 ```
 
 ### Arquivos e Diretórios
@@ -362,19 +371,29 @@ A seguir, a estrutura do diretório do projeto, organizada para separar o códig
 
   * [`ratings.csv`](ml-25m/ratings.csv), [`movies.csv`](ml-25m/movies.csv), etc.: Arquivos originais do dataset usados no pré-processamento.
 
-* [`src/`](src): Contém todos os arquivos de código-fonte modularizados:
+* [`src/`](src): Contém todos os arquivos de código-fonte organizados em módulos:
 
-  * [`Config.hpp`](src/Config.hpp): Define constantes globais e parâmetros do sistema (ex: `TOP_K `).
-  * [`DataLoader.cpp`](src/DataLoader.cpp) / [`DataLoader.hpp`](src/DataLoader.hpp): Módulo responsável pelo carregamento e gerenciamento dos dados em memória.
-  * [`DataStructures.hpp`](src/DataStructures.hpp): Define as estruturas de dados utilizadas no projeto.
-  * [`FastRecommendation.cpp`](src/FastRecommendation.cpp) / [`FastRecommendation.hpp`](src/FastRecommendation.hpp): Abordagem otimizada de recomendação.
-  * [`LSHIndex.cpp`](src/LSHIndex.cpp) / [`LSHIndex.hpp`](src/LSHIndex.hpp): Implementação de Locality Sensitive Hashing (LSH) para otimizar a busca por vizinhos (se aplicável).
-  * [`Main.cpp`](src/Main.cpp): Ponto de entrada principal do programa.
-  * [`preProcessament.cpp`](src/preProcessament.cpp) / [`preProcessament.hpp`](src/preProcessament.hpp): Funções de pré-processamento dos dados brutos.
-  * [`RecommendationEngine.cpp`](src/RecommendationEngine.cpp) / [`RecommendationEngine.hpp`](src/RecommendationEngine.hpp): Lógica principal do motor de recomendação.
-  * [`SimilarityCalculator.cpp`](src/SimilarityCalculator.cpp) / [`SimilarityCalculator.hpp`](src/SimilarityCalculator.hpp): Implementa as métricas de similaridade (Cosseno, Euclidiana, Jaccard).
+  * [`core/`](src/core): Módulo central com configurações e estruturas de dados fundamentais:
+    * [`Config.hpp`](src/core/Config.hpp): Define constantes globais e parâmetros do sistema (ex: `TOP_K`).
+    * [`DataStructures.hpp`](src/core/DataStructures.hpp): Define as estruturas de dados utilizadas no projeto.
+    
+  * [`data/`](src/data): Módulo de gerenciamento de dados:
+    * [`DataLoader.cpp`](src/data/DataLoader.cpp) / [`DataLoader.hpp`](src/data/DataLoader.hpp): Responsável pelo carregamento e gerenciamento dos dados em memória.
+    
+  * [`algorithms/`](src/algorithms): Módulo de algoritmos de recomendação:
+    * [`LSHIndex.cpp`](src/algorithms/LSHIndex.cpp) / [`LSHIndex.hpp`](src/algorithms/LSHIndex.hpp): Implementação do Locality Sensitive Hashing para busca eficiente de usuários similares.
+    * [`RecommendationEngine.cpp`](src/algorithms/RecommendationEngine.cpp) / [`RecommendationEngine.hpp`](src/algorithms/RecommendationEngine.hpp): Motor de recomendação híbrido que combina filtragem colaborativa, baseada em conteúdo e popularidade.
+    * [`SimilarityCalculator.cpp`](src/algorithms/SimilarityCalculator.cpp) / [`SimilarityCalculator.hpp`](src/algorithms/SimilarityCalculator.hpp): Calcula similaridade entre usuários usando cosseno.
+    
+  * [`preprocessing/`](src/preprocessing): Módulo de pré-processamento de dados:
+    * [`preProcessament.cpp`](src/preprocessing/preProcessament.cpp) / [`preProcessament.hpp`](src/preprocessing/preProcessament.hpp): Funções para pré-processamento eficiente dos dados do MovieLens.
+    
+  * [`system/`](src/system): Módulo do sistema principal:
+    * [`FastRecommendationSystem.cpp`](src/system/FastRecommendationSystem.cpp) / [`FastRecommendationSystem.hpp`](src/system/FastRecommendationSystem.hpp): Orquestra todo o sistema de recomendação, coordenando os diferentes módulos.
+    
+  * [`main/`](src/main): Ponto de entrada da aplicação:
+    * [`Main.cpp`](src/main/Main.cpp): Função principal que inicializa e executa o sistema.
 
-      
 ### 📚 Bibliotecas
 
 A implementação do sistema de recomendação MovieLens faz uso extensivo da Standard Template Library (STL) do C++ e de bibliotecas para operações de sistema de baixo nível, visando alta performance e modularidade. As principais bibliotecas utilizadas são:
