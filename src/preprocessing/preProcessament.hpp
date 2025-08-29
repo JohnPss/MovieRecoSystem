@@ -1,7 +1,7 @@
 #ifndef PREPROCESSAMENTO_HPP
 #define PREPROCESSAMENTO_HPP
 
-#include "Config.hpp"
+#include "../core/Config.hpp"
 
 struct Rating {
     int movieId;

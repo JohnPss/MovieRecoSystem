@@ -1,8 +1,8 @@
 #ifndef RECOMMENDATION_ENGINE_H
 #define RECOMMENDATION_ENGINE_H
 
-#include "Config.hpp"
-#include "DataStructures.hpp"
+#include "../core/Config.hpp"
+#include "../core/DataStructures.hpp"
 #include "SimilarityCalculator.hpp"
 #include "LSHIndex.hpp"
 

@@ -1,7 +1,7 @@
-#include "Config.hpp"
+#include "../core/Config.hpp"
 
-#include "FastRecommendationSystem.hpp"
-#include "preProcessament.hpp"
+#include "../system/FastRecommendationSystem.hpp"
+#include "../preprocessing/preProcessament.hpp"
 
 using namespace std;
 
